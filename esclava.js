@@ -36,16 +36,24 @@ function drawDeck() {
   });
 }
 
+function draw() {
+  if (!currentGame) return;
+  if (currentGame.state == "pending") {
+    drawDeck();
+  }
+}
+
 function joinGame(gameId) {
   $("#lobby").hide();
-  currentGame = db.collection("games").doc(gameId);
-  currentGame.update({
+  let gameRef = db.collection("games").doc(gameId);
+  gameRef.onSnapshot(snapshot => currentGame = snapshot.data());
+  gameRef.update({
     playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
   });
-  currentGame.collection("players").add({
+  gameRef.collection("players").add({
     name: userName
   });
-  currentGame.collection("players").onSnapshot(snapshot => {
+  gameRef.collection("players").onSnapshot(snapshot => {
     let $players = $("#players-table");
     $players.html("");
     $players.append($("<h5>").text("Jugadores:"));
@@ -78,8 +86,7 @@ function joinGame(gameId) {
       i++;
     });
   });
-  drawDeck();
-  $("#game-id").text(gameId);
+  $("#game-id").text("Código: " + gameId);
   $("#game").show();
 }
 
@@ -93,6 +100,14 @@ function initializeCanvas() {
   ctx = canvas.getContext("2d");
   resizeCanvas();
   $(window).resize(resizeCanvas);
+
+  function privateDraw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    draw();
+    ctx.resetTransform();
+    requestAnimationFrame(privateDraw);
+  }
+  privateDraw();
 }
 
 function askUserName() {
