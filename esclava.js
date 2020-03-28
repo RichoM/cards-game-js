@@ -73,7 +73,11 @@ function draw(delta) {
   }
 
   scrollOffset += scrollAccel;
-  scrollAccel /= 100 * delta;
+  if (Math.abs(scrollAccel) > 0.0001) {
+    scrollAccel /= 70 * delta;
+  } else {
+    scrollAccel = 0;
+  }
 }
 
 function updateGame(game) {
