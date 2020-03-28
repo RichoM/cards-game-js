@@ -30,16 +30,17 @@ function joinGame(gameId) {
     $players.html("");
     $players.append($("<h5>").text("Jugadores:"));
     let i = 0;
+    let turn = 1; // TODO(Richo)
     snapshot.forEach(doc => {
       let player = doc.data();
+      let $name = $("<div>").text(player.name);
+
       let $row = $("<div>")
         .addClass("row")
-        .css("border", "1px solid red")
         .append($("<div>")
           .addClass("col-md-4")
           .css("text-align", "right")
-          //.append($("<div>").text(player.name))
-          .text(player.name))
+          .append($name))
 
         .append($("<div>")
           .addClass("col-md-4")
@@ -48,7 +49,11 @@ function joinGame(gameId) {
 
         .append($("<div>")
           .addClass("col-md-4")
-          .append($star(i))); // <i class="fas fa-star"></i>
+          .append($star(i)));
+      if (i == turn) {
+        $row.addClass("turn");        
+        $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
+      }
       $players.append($row);
       i++;
     });
@@ -89,7 +94,7 @@ function initializeLobby() {
         .append($("<td>").text(displayState(game.state)))
         .append($("<td>").text(game.playerNames.join(", ")));
       let $btn = $("<button>")
-        .addClass("btn").addClass("btn-sm").addClass("btn-secondary")
+        .addClass("btn").addClass("btn-sm").addClass("btn-outline-info")
         .text("Unirse")
         .on("click", () => joinGame(doc.id));
       $row.append($("<td>").append($btn));
