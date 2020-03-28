@@ -1,4 +1,5 @@
 let userName = null;
+let playerId = null;
 let currentGame = null;
 let spritesheet = null;
 let canvas = null;
@@ -40,53 +41,142 @@ function draw() {
   if (!currentGame) return;
   if (currentGame.state == "pending") {
     drawDeck();
+  } else if (currentGame.state = "playing") {
+    debugger;
   }
+}
+
+function updateGame(game) {
+  game.players = currentGame ? currentGame.players : [];
+  currentGame = game;
+  updateUI();
+}
+
+function updatePlayers(players) {
+  currentGame.players = players;
+  updateUI();
+}
+
+function updateUI() {
+  let $players = $("#players-table");
+  $players.html("");
+  $players.append($("<h5>").text("Jugadores:"));
+  let turn = currentGame.turn;
+  currentGame.players.forEach((player, i) => {
+    let $name = $("<div>").text(player.name);
+
+    let $row = $("<div>")
+      .addClass("row")
+      .append($("<div>")
+        .addClass("col-md-4")
+        .css("text-align", "right")
+        .append($name));
+
+    if (player.cards.length > 0) {
+      let msg = player.cards.length == 1 ?
+                  "1 carta" : player.cards.length + " cartas";
+      $row.append($("<div>")
+        .addClass("col-md-4")
+        .text(msg));
+    }
+
+    // TODO(Richo): Use stars to count wins
+    if (false) {
+      $row.append($("<div>")
+        .addClass("col-md-4")
+        .append($star(0)));
+    }
+
+    if (i == turn) {
+      $row.addClass("turn");
+      $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
+    }
+    $players.append($row);
+  });
+}
+
+function shuffle(array) {
+  var currentIndex = array.length, temporaryValue, randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}
+
+function startGame() {
+  let deck = [];
+  let suits = ["oro", "copa", "espada", "basto"];
+  suits.forEach((suit, i) => {
+    for (let i = 1; i <= 12; i++) {
+      deck.push({ number: i, suit: suit });
+    }
+  });
+  shuffle(deck);
+
+  let players = currentGame.players;
+  let hands = players.map(each => []);
+  let i = 0;
+  while (deck.length > 0) {
+    hands[i].push(deck.pop());
+    i = (i + 1) % players.length;
+  }
+
+  players.forEach((player, i) => {
+    db.collection("games").doc(currentGame.id).collection("players").doc(player.id).update({
+      cards: hands[i]
+    })
+  });
 }
 
 function joinGame(gameId) {
   $("#lobby").hide();
+
   let gameRef = db.collection("games").doc(gameId);
-  gameRef.onSnapshot(snapshot => currentGame = snapshot.data());
+
+  gameRef.onSnapshot(snapshot => {
+    let data = snapshot.data();
+    data.id = snapshot.id;
+    updateGame(data);
+  });
+  gameRef.collection("players").onSnapshot(snapshot => {
+    let players = [];
+    snapshot.forEach(doc => {
+      let data = doc.data();
+      data.id = doc.id;
+      players.push(data);
+    });
+    updatePlayers(players);
+  });
+
   gameRef.update({
     playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
   });
   gameRef.collection("players").add({
-    name: userName
+    name: userName,
+    cards: []
+  }).then(doc => playerId = doc.id);
+
+  $("#start-game-button").on("click", function () {
+    $("#start-game-button").hide();
+    gameRef.update({
+      turn: Math.round(Math.random() * currentGame.players.length),
+      state: "playing"
+    }).then(startGame);
   });
-  gameRef.collection("players").onSnapshot(snapshot => {
-    let $players = $("#players-table");
-    $players.html("");
-    $players.append($("<h5>").text("Jugadores:"));
-    let i = 0;
-    let turn = 1; // TODO(Richo)
-    snapshot.forEach(doc => {
-      let player = doc.data();
-      let $name = $("<div>").text(player.name);
 
-      let $row = $("<div>")
-        .addClass("row")
-        .append($("<div>")
-          .addClass("col-md-4")
-          .css("text-align", "right")
-          .append($name))
-
-        .append($("<div>")
-          .addClass("col-md-4")
-          //.append($("<div>").text(Math.random() * 30))
-          .text("" + Math.round(Math.random() * 30) + " cartas"))
-
-        .append($("<div>")
-          .addClass("col-md-4")
-          .append($star(i)));
-      if (i == turn) {
-        $row.addClass("turn");
-        $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
-      }
-      $players.append($row);
-      i++;
-    });
-  });
   $("#game-id").text("Código: " + gameId);
+  $("#start-game-button").show();
   $("#game").show();
 }
 
