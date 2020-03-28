@@ -1,0 +1,32 @@
+<html>
+  <head></head>
+  <body>
+    <script
+      src="https://code.jquery.com/jquery-3.4.1.min.js"
+      integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+      crossorigin="anonymous">
+    </script>
+
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
+
+    <script>
+      var firebaseConfig = {
+        apiKey: "AIzaSyADcaTCdxxBgxzQuT5B4v7VzuYvC6vmWB4",
+        authDomain: "cards-game-js.firebaseapp.com",
+        databaseURL: "https://cards-game-js.firebaseio.com",
+        projectId: "cards-game-js",
+        storageBucket: "cards-game-js.appspot.com",
+        messagingSenderId: "1073026795227",
+        appId: "1:1073026795227:web:0264c9117e5ef118996efe",
+        measurementId: "G-FRSTMXTBFM"
+      };
+      firebase.initializeApp(firebaseConfig);
+      firebase.analytics();
+
+      var db = firebase.firestore();
+    </script>
+  </body>
+</html>
