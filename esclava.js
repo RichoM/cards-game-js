@@ -1,5 +1,8 @@
 let userName = null;
 let currentGame = null;
+let spritesheet = null;
+let canvas = null;
+let ctx = null;
 
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
@@ -14,6 +17,23 @@ function $star(n) {
     $span.append($("<i>").addClass("fas").addClass("fa-star"));
   }
   return $span;
+}
+
+function drawCard(card) {
+  ctx.drawImage(card, -card.width/2, -card.height/2);
+}
+
+function drawDeck() {
+  spritesheet.then(cards => {
+    let card = cards[49];
+    ctx.translate(canvas.width/2, canvas.height/2);
+    let inc = 3;
+    let steps = 5;
+    for (let i = 0; i < steps; i++) {
+      drawCard(card);
+      ctx.translate(inc, -inc);
+    }
+  });
 }
 
 function joinGame(gameId) {
@@ -51,24 +71,26 @@ function joinGame(gameId) {
           .addClass("col-md-4")
           .append($star(i)));
       if (i == turn) {
-        $row.addClass("turn");        
+        $row.addClass("turn");
         $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
       }
       $players.append($row);
       i++;
     });
-  })
+  });
+  drawDeck();
   $("#game-id").text(gameId);
   $("#game").show();
 }
 
 function resizeCanvas() {
-  let canvas = document.getElementById("world");
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
 
 function initializeCanvas() {
+  canvas = document.getElementById("world");
+  ctx = canvas.getContext("2d");
   resizeCanvas();
   $(window).resize(resizeCanvas);
 }
@@ -117,8 +139,43 @@ function initializeLobby() {
   })
 }
 
+function loadSpritesheet(src, w, h, max) {
+  return new Promise((resolve, reject) => {
+    let img = new Image();
+    img.onload = function () {
+      let rows = img.width / w;
+      let cols = img.height / h;
+      if (max == undefined) { max = rows * cols; }
+      let pieces = [];
+      for (let j = 0; j < cols; j++) {
+        for (let i = 0; i < rows; i++) {
+          if (pieces.length < max) {
+            let canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            let ctx = canvas.getContext("2d");
+            ctx.drawImage(img, i*w, j*h, w, h, 0, 0, w, h);
+            let temp = new Image();
+            pieces.push(new Promise((resolve, reject) => {
+              temp.onload = function () {  resolve(temp); }
+              temp.src = canvas.toDataURL();
+            }));
+          }
+        }
+      }
+      Promise.all(pieces).then(resolve);
+    };
+    img.src = src;
+  });
+}
+
+function initializeSpritesheet() {
+  spritesheet = loadSpritesheet("cards.png", 208, 319, 50);
+}
+
 $(document).ready(function () {
   initializeCanvas();
   initializeLobby();
+  initializeSpritesheet();
   askUserName();
 });
