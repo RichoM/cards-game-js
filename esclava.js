@@ -2,6 +2,7 @@ let userName = null;
 let playerId = null;
 let currentGame = null;
 let spritesheet = null;
+let scrollOffset = 0;
 let canvas = null;
 let ctx = null;
 
@@ -37,12 +38,37 @@ function drawDeck() {
   });
 }
 
+function drawHand(hand) {
+
+  function suitIndex(suit) {
+    let suits = ["oro", "copa", "espada", "basto"];
+    return suits.indexOf(suit);
+  }
+  function cardIndex(card) {
+    return (card.number - 1) + suitIndex(card.suit) * 12;
+  }
+
+  spritesheet.then(sprites => {
+    let imgs = hand.map(cardIndex).map(i => sprites[i]);
+    let step = 60;
+    ctx.translate(canvas.width/2 + scrollOffset, canvas.height - 40);
+    ctx.translate(-step * (imgs.length/2), 0);
+    imgs.forEach(img => {
+      drawCard(img);
+      ctx.translate(step, 0);
+    })
+  });
+}
+
 function draw() {
   if (!currentGame) return;
   if (currentGame.state == "pending") {
     drawDeck();
   } else if (currentGame.state = "playing") {
-    debugger;
+    let player = currentGame.players.find(p => p.id == playerId);
+    if (player && player.cards.length > 0) {
+      drawHand(player.cards);
+    }
   }
 }
 
@@ -170,7 +196,7 @@ function joinGame(gameId) {
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
     gameRef.update({
-      turn: Math.round(Math.random() * currentGame.players.length),
+      turn: Math.floor(Math.random() * currentGame.players.length),
       state: "playing"
     }).then(startGame);
   });
@@ -192,9 +218,9 @@ function initializeCanvas() {
   $(window).resize(resizeCanvas);
 
   function privateDraw() {
+    ctx.resetTransform();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     draw();
-    ctx.resetTransform();
     requestAnimationFrame(privateDraw);
   }
   privateDraw();
