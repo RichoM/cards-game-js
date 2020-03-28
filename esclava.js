@@ -3,6 +3,7 @@ let playerId = null;
 let currentGame = null;
 let spritesheet = null;
 let scrollOffset = 0;
+let scrollAccel = 0;
 let canvas = null;
 let ctx = null;
 
@@ -60,7 +61,7 @@ function drawHand(hand) {
   });
 }
 
-function draw() {
+function draw(delta) {
   if (!currentGame) return;
   if (currentGame.state == "pending") {
     drawDeck();
@@ -70,6 +71,9 @@ function draw() {
       drawHand(player.cards);
     }
   }
+
+  scrollOffset += scrollAccel;
+  scrollAccel /= 100 * delta;
 }
 
 function updateGame(game) {
@@ -211,16 +215,80 @@ function resizeCanvas() {
   canvas.height = window.innerHeight;
 }
 
+function initializeCanvasEvents() {
+
+	// Get the position of the mouse relative to the canvas
+	function getMousePos(canvasDom, mouseEvent) {
+		var rect = canvasDom.getBoundingClientRect();
+		return {
+			x: mouseEvent.clientX - rect.left,
+			y: mouseEvent.clientY - rect.top
+		};
+	}
+
+	// Get the position of a touch relative to the canvas
+	function getTouchPos(canvasDom, touchEvent) {
+		var rect = canvasDom.getBoundingClientRect();
+		return {
+			x: touchEvent.touches[0].clientX - rect.left,
+			y: touchEvent.touches[0].clientY - rect.top
+		};
+	}
+
+  let scrollBegin = null;
+  let scrollEnd = null;
+
+  function scroll(begin, end) {
+    hdist = end.x - begin.x;
+    console.log(hdist);
+    scrollAccel += hdist;
+  }
+
+  canvas.addEventListener("touchstart", function (e) {
+    scrollBegin = getTouchPos(canvas, e);
+  }, false);
+  canvas.addEventListener("touchend", function (e) {
+    scroll(scrollBegin, getTouchPos(canvas, e));
+    scrollBegin = null;
+    scrollEnd = null;
+  }, false);
+  canvas.addEventListener("touchmove", function (e) {
+    scrollEnd = getTouchPos(canvas, e);
+    scroll(scrollBegin, scrollEnd);
+    scrollBegin = scrollEnd;
+  }, false);
+
+  canvas.addEventListener("mousedown", function (e) {
+    scrollBegin = getMousePos(canvas, e);
+  }, false);
+  canvas.addEventListener("mouseup", function (e) {
+    scroll(scrollBegin, getMousePos(canvas, e));
+    scrollBegin = null;
+    scrollEnd = null;
+  }, false);
+  canvas.addEventListener("mousemove", function (e) {
+    scrollEnd = getMousePos(canvas, e);
+    scroll(scrollBegin, scrollEnd);
+    scrollBegin = scrollEnd;
+  }, false);
+
+}
+
 function initializeCanvas() {
   canvas = document.getElementById("world");
   ctx = canvas.getContext("2d");
+
+  initializeCanvasEvents();
   resizeCanvas();
   $(window).resize(resizeCanvas);
 
-  function privateDraw() {
+  let last = 0;
+  function privateDraw(now) {
     ctx.resetTransform();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    draw();
+    let delta = (now - last) / 1000;
+    draw(delta);
+    last = now;
     requestAnimationFrame(privateDraw);
   }
   privateDraw();
