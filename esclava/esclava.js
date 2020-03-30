@@ -95,8 +95,8 @@ function drawHand(hand) {
 
     min = -angle * (imgs.length / 2);
     max = angle * (imgs.length / 2);
-    if (scrollOffset < min + angle) scrollOffset = min + angle;
-    if (scrollOffset > max - angle) scrollOffset = max - angle;
+    if (scrollOffset < min + angle) scrollAccel = 1;
+    if (scrollOffset > max - angle) scrollAccel = -1;
 
     ctx.translate(origin.x, origin.y);
     ctx.rotate(min * Math.PI / 180);
