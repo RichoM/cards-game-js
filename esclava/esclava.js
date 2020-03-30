@@ -40,17 +40,40 @@ function drawDeck() {
 }
 
 let origin = null;
-let radius = null;
+let click_radius = null;
 let angle = 5; // degrees
 
 let min = null;
 let max = null;
+
+function dist(a, b) {
+  let dx = b.x - a.x;
+  let dy = b.y - a.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 function scroll(begin, end) {
   hdist = end.x - begin.x;
   scrollAccel += hdist * 0.01;
   console.log("SCROLL: " + hdist);
 }
+
+function click(pos) {
+  let d = dist(pos, origin);
+  let data = {
+    r: click_radius,
+    d: d,
+    origin: origin
+  };
+  if (d < click_radius) {
+
+    $("#game-id").text("CLICK INSIDE: " + JSON.stringify(data, null, 2));
+  } else {
+
+    $("#game-id").text("CLICK OUTSIDE: " + JSON.stringify(data, null, 2));
+  }
+}
+
 
 function drawHand(hand) {
 
@@ -65,7 +88,9 @@ function drawHand(hand) {
   spritesheet.then(sprites => {
     let imgs = hand.map(cardIndex).map(i => sprites[i]);
 
-    radius = canvas.height * 1.13;
+    click_radius = canvas.height * 1.13 + imgs[0].height;
+
+    let radius = click_radius - imgs[0].height;
     origin = {x: canvas.width/2, y: canvas.height + radius - (imgs[0].height * 0.25)};
 
     min = -angle * (imgs.length / 2);
@@ -280,8 +305,10 @@ function initializeCanvasEvents() {
     scrollBegin = getTouchPos(canvas, e);
   }, false);
   canvas.addEventListener("touchend", function (e) {
+    let post = getTouchPos(canvas, e);
+    click(pos);
     if (scrollBegin != null) {
-      scroll(scrollBegin, getTouchPos(canvas, e));
+      scroll(scrollBegin, pos);
       scrollBegin = null;
       scrollEnd = null;
     }
@@ -298,8 +325,10 @@ function initializeCanvasEvents() {
     scrollBegin = getMousePos(canvas, e);
   }, false);
   canvas.addEventListener("mouseup", function (e) {
+    let pos = getMousePos(canvas, e);
+    click(pos);
     if (scrollBegin != null) {
-      scroll(scrollBegin, getMousePos(canvas, e));
+      scroll(scrollBegin, pos);
       scrollBegin = null;
       scrollEnd = null;
     }
