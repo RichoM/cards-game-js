@@ -39,6 +39,19 @@ function drawDeck() {
   });
 }
 
+let origin = null;
+let radius = null;
+let angle = 5; // degrees
+
+let min = null;
+let max = null;
+
+function scroll(begin, end) {
+  hdist = end.x - begin.x;
+  scrollAccel += hdist * 0.01;
+  console.log("SCROLL: " + hdist);
+}
+
 function drawHand(hand) {
 
   function suitIndex(suit) {
@@ -51,13 +64,34 @@ function drawHand(hand) {
 
   spritesheet.then(sprites => {
     let imgs = hand.map(cardIndex).map(i => sprites[i]);
+
+    radius = canvas.height * 1.13;
+    origin = {x: canvas.width/2, y: canvas.height + radius - (imgs[0].height * 0.25)};
+
+    min = -angle * (imgs.length / 2);
+    max = angle * (imgs.length / 2);
+    if (scrollOffset < min + angle) scrollOffset = min + angle;
+    if (scrollOffset > max - angle) scrollOffset = max - angle;
+
+    ctx.translate(origin.x, origin.y);
+    ctx.rotate(min * Math.PI / 180);
+    ctx.rotate(scrollOffset * Math.PI / 180);
+
+    imgs.forEach((img, i) => {
+      ctx.rotate(angle * Math.PI / 180);
+      ctx.translate(0, -radius);
+      drawCard(img);
+      ctx.translate(0, radius);
+    });
+    /*
     let step = 60;
     ctx.translate(canvas.width/2 + scrollOffset, canvas.height - 40);
     ctx.translate(-step * (imgs.length/2), 0);
     imgs.forEach(img => {
       drawCard(img);
       ctx.translate(step, 0);
-    })
+    });
+    */
   });
 }
 
@@ -242,38 +276,40 @@ function initializeCanvasEvents() {
   let scrollBegin = null;
   let scrollEnd = null;
 
-  function scroll(begin, end) {
-    hdist = end.x - begin.x;
-    console.log(hdist);
-    scrollAccel += hdist;
-  }
-
   canvas.addEventListener("touchstart", function (e) {
     scrollBegin = getTouchPos(canvas, e);
   }, false);
   canvas.addEventListener("touchend", function (e) {
-    scroll(scrollBegin, getTouchPos(canvas, e));
-    scrollBegin = null;
-    scrollEnd = null;
+    if (scrollBegin != null) {
+      scroll(scrollBegin, getTouchPos(canvas, e));
+      scrollBegin = null;
+      scrollEnd = null;
+    }
   }, false);
   canvas.addEventListener("touchmove", function (e) {
-    scrollEnd = getTouchPos(canvas, e);
-    scroll(scrollBegin, scrollEnd);
-    scrollBegin = scrollEnd;
+    if (scrollBegin != null) {
+      scrollEnd = getTouchPos(canvas, e);
+      scroll(scrollBegin, scrollEnd);
+      scrollBegin = scrollEnd;
+    }
   }, false);
 
   canvas.addEventListener("mousedown", function (e) {
     scrollBegin = getMousePos(canvas, e);
   }, false);
   canvas.addEventListener("mouseup", function (e) {
-    scroll(scrollBegin, getMousePos(canvas, e));
-    scrollBegin = null;
-    scrollEnd = null;
+    if (scrollBegin != null) {
+      scroll(scrollBegin, getMousePos(canvas, e));
+      scrollBegin = null;
+      scrollEnd = null;
+    }
   }, false);
   canvas.addEventListener("mousemove", function (e) {
-    scrollEnd = getMousePos(canvas, e);
-    scroll(scrollBegin, scrollEnd);
-    scrollBegin = scrollEnd;
+    if (scrollBegin != null) {
+      scrollEnd = getMousePos(canvas, e);
+      scroll(scrollBegin, scrollEnd);
+      scrollBegin = scrollEnd;
+    }
   }, false);
 
 }
