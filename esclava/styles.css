@@ -1,5 +1,13 @@
 
 .turn {
-  background: rgb(0,212,255);
-  background: linear-gradient(90deg, rgba(0,212,255,1) 0%, rgba(255,0,0,0) 75%);
+
+  /* Permalink - use to edit and share this gradient: https://colorzilla.com/gradient-editor/#00d4ff+0,7db9e8+100&1+0,0+100 */
+  background: -moz-linear-gradient(left,  rgba(0,212,255,1) 0%, rgba(125,185,232,0) 100%); /* FF3.6-15 */
+  background: -webkit-linear-gradient(left,  rgba(0,212,255,1) 0%,rgba(125,185,232,0) 100%); /* Chrome10-25,Safari5.1-6 */
+  background: linear-gradient(to right,  rgba(0,212,255,1) 0%,rgba(125,185,232,0) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00d4ff', endColorstr='#007db9e8',GradientType=1 ); /* IE6-9 */
+
+
+  /*background: rgb(0,212,255);
+  background: linear-gradient(90deg, rgba(0,212,255,1) 0%, rgba(255,0,0,0) 75%);*/
 }
