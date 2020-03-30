@@ -367,6 +367,11 @@ function initializeCanvasEvents() {
       scrollBegin = scrollEnd;
     }
   }, false);
+  canvas.addEventListener("mouseout", function (e) {
+    scrolling = false;
+    scrollBegin = null;
+    scrollEnd = null;
+  }, false);
 
 }
 
