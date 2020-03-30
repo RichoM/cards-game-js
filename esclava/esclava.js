@@ -4,6 +4,7 @@ let currentGame = null;
 let spritesheet = null;
 let scrollOffset = 0;
 let scrollAccel = 0;
+let selectedCards = new Set();
 let canvas = null;
 let ctx = null;
 
@@ -60,17 +61,28 @@ function scroll(begin, end) {
 
 function click(pos) {
   let d = dist(pos, origin);
-  let data = {
-    r: click_radius,
-    d: d,
-    origin: origin
-  };
   if (d < click_radius) {
+    let player = currentGame.players.find(p => p.id == playerId);
+    if (!player || player.cards.length == 0) return;
 
-    $("#game-id").text("CLICK INSIDE: " + JSON.stringify(data, null, 2));
-  } else {
-
-    $("#game-id").text("CLICK OUTSIDE: " + JSON.stringify(data, null, 2));
+    let click_angle = -1 * (Math.atan2(origin.x - pos.x, origin.y - pos.y) * (180 / Math.PI));
+    let angles = player.cards.map((card, i) => min + scrollOffset + angle * i);
+    let min_dist = null;
+    let min_i = null;
+    angles.forEach((angle, i) => {
+      let angle_dist = Math.abs(click_angle - angle);
+      if (min_dist == null || angle_dist < min_dist) {
+        min_i = i;
+        min_dist = angle_dist;
+      }
+    });
+    if (min_i != null) {
+      if (selectedCards.has(min_i)) {
+        selectedCards.delete(min_i);
+      } else {
+        selectedCards.add(min_i);
+      }
+    }
   }
 }
 
@@ -88,25 +100,32 @@ function drawHand(hand) {
   spritesheet.then(sprites => {
     let imgs = hand.map(cardIndex).map(i => sprites[i]);
 
-    click_radius = canvas.height * 1.13 + imgs[0].height;
+    click_radius = Math.max(canvas.height, canvas.width) * 1.13 + imgs[0].height;
+    click_radius = 1900;
 
     let radius = click_radius - imgs[0].height;
     origin = {x: canvas.width/2, y: canvas.height + radius - (imgs[0].height * 0.25)};
 
     min = -angle * (imgs.length / 2);
     max = angle * (imgs.length / 2);
-    if (scrollOffset < min + angle) scrollAccel = 1;
-    if (scrollOffset > max - angle) scrollAccel = -1;
+    if (scrollOffset < min + angle) scrollAccel = Math.min(1, (min+angle)-scrollOffset);
+    if (scrollOffset > max - angle) scrollAccel = Math.max(-1, (max-angle)-scrollOffset);
 
     ctx.translate(origin.x, origin.y);
     ctx.rotate(min * Math.PI / 180);
     ctx.rotate(scrollOffset * Math.PI / 180);
 
     imgs.forEach((img, i) => {
-      ctx.rotate(angle * Math.PI / 180);
-      ctx.translate(0, -radius);
+      let selected = selectedCards.has(i);
+      ctx.translate(0, -(radius + (selected ? img.height*0.2 : 0)));
       drawCard(img);
-      ctx.translate(0, radius);
+
+      ctx.font = "16px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("" + i + " - " + (min + scrollOffset + angle * i).toFixed(2), 0, -(img.height/2 + 10));
+      ctx.translate(0, (radius + (selected ? img.height*0.2 : 0)));
+
+      ctx.rotate(angle * Math.PI / 180);
     });
     /*
     let step = 60;
@@ -300,22 +319,27 @@ function initializeCanvasEvents() {
 
   let scrollBegin = null;
   let scrollEnd = null;
+  let scrolling = false;
+  let scrollMin = 10;
 
   canvas.addEventListener("touchstart", function (e) {
     scrollBegin = getTouchPos(canvas, e);
   }, false);
   canvas.addEventListener("touchend", function (e) {
-    let post = getTouchPos(canvas, e);
-    click(pos);
-    if (scrollBegin != null) {
-      scroll(scrollBegin, pos);
-      scrollBegin = null;
-      scrollEnd = null;
+    scrollEnd = getTouchPos(canvas, e);
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+      scroll(scrollBegin, scrollEnd);
+    } else if (!scrolling) {
+      click(scrollEnd);
     }
+    scrollBegin = null;
+    scrollEnd = null;
+    scrolling = false;
   }, false);
   canvas.addEventListener("touchmove", function (e) {
-    if (scrollBegin != null) {
-      scrollEnd = getTouchPos(canvas, e);
+    scrollEnd = getTouchPos(canvas, e);
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+      scrolling = true;
       scroll(scrollBegin, scrollEnd);
       scrollBegin = scrollEnd;
     }
@@ -325,17 +349,20 @@ function initializeCanvasEvents() {
     scrollBegin = getMousePos(canvas, e);
   }, false);
   canvas.addEventListener("mouseup", function (e) {
-    let pos = getMousePos(canvas, e);
-    click(pos);
-    if (scrollBegin != null) {
-      scroll(scrollBegin, pos);
-      scrollBegin = null;
-      scrollEnd = null;
+    scrollEnd = getMousePos(canvas, e);
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+      scroll(scrollBegin, scrollEnd);
+    } else if (!scrolling) {
+      click(scrollEnd);
     }
+    scrollBegin = null;
+    scrollEnd = null;
+    scrolling = false;
   }, false);
   canvas.addEventListener("mousemove", function (e) {
-    if (scrollBegin != null) {
-      scrollEnd = getMousePos(canvas, e);
+    scrollEnd = getMousePos(canvas, e);
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+      scrolling = true;
       scroll(scrollBegin, scrollEnd);
       scrollBegin = scrollEnd;
     }
