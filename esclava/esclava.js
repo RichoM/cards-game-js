@@ -55,7 +55,7 @@ function dist(a, b) {
 
 function scroll(begin, end) {
   hdist = end.x - begin.x;
-  scrollAccel = hdist * 0.01;
+  scrollAccel = hdist * 0.025;
   console.log("SCROLL: " + hdist);
 }
 
