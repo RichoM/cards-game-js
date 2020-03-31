@@ -55,7 +55,7 @@ function dist(a, b) {
 
 function scroll(begin, end) {
   hdist = end.x - begin.x;
-  scrollAccel += hdist * 0.01;
+  scrollAccel = hdist * 0.01;
   console.log("SCROLL: " + hdist);
 }
 
@@ -108,8 +108,8 @@ function drawHand(hand) {
 
     min = -angle * (imgs.length / 2);
     max = angle * (imgs.length / 2);
-    if (scrollOffset < min + angle) scrollAccel = Math.min(1, (min+angle)-scrollOffset);
-    if (scrollOffset > max - angle) scrollAccel = Math.max(-1, (max-angle)-scrollOffset);
+    if (scrollOffset < min + angle) scrollAccel = 1;
+    if (scrollOffset > max - angle) scrollAccel = -1;
 
     ctx.translate(origin.x, origin.y);
     ctx.rotate(min * Math.PI / 180);
@@ -321,6 +321,7 @@ function initializeCanvasEvents() {
   let scrollEnd = null;
   let scrolling = false;
   let scrollMin = 10;
+  let last = 0;
 
   canvas.addEventListener("touchstart", function (e) {
     scrollBegin = getTouchPos(canvas, e);
@@ -338,7 +339,9 @@ function initializeCanvasEvents() {
   }, false);
   canvas.addEventListener("touchmove", function (e) {
     scrollEnd = getTouchPos(canvas, e);
-    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+    let now = +new Date();
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin && now - last > 16) {
+      last = now;
       scrolling = true;
       scroll(scrollBegin, scrollEnd);
       scrollBegin = scrollEnd;
@@ -361,7 +364,9 @@ function initializeCanvasEvents() {
   }, false);
   canvas.addEventListener("mousemove", function (e) {
     scrollEnd = getMousePos(canvas, e);
-    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin) {
+    let now = +new Date();
+    if (scrollBegin != null && dist(scrollBegin, scrollEnd) > scrollMin && now - last > 16) {
+      last = now;
       scrolling = true;
       scroll(scrollBegin, scrollEnd);
       scrollBegin = scrollEnd;
