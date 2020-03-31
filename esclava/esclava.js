@@ -180,7 +180,7 @@ function updateUI() {
     let $row = $("<div>")
       .addClass("row")
       .append($("<div>")
-        .addClass("col-md-4")
+        .addClass("col-4")
         .css("text-align", "right")
         .append($name));
 
@@ -188,14 +188,14 @@ function updateUI() {
       let msg = player.cards.length == 1 ?
                   "1 carta" : player.cards.length + " cartas";
       $row.append($("<div>")
-        .addClass("col-md-4")
+        .addClass("col-4")
         .text(msg));
     }
 
     // TODO(Richo): Use stars to count wins
     if (false) {
       $row.append($("<div>")
-        .addClass("col-md-4")
+        .addClass("col-4")
         .append($star(0)));
     }
 
