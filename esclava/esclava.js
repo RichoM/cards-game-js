@@ -344,6 +344,7 @@ function joinGame(gameId) {
   }).then(doc => {
     playerId = doc.id;
     $("#game").show();
+    $("#creating-game-modal").modal("hide");
     updateUI();
   });
 
@@ -526,13 +527,17 @@ function initializeLobby() {
       let $btn = $("<button>")
         .addClass("btn").addClass("btn-sm").addClass("btn-outline-info")
         .text("Unirse")
-        .on("click", () => joinGame(doc.id));
+        .on("click", () => {
+          $("#creating-game-modal").modal("show");
+          joinGame(doc.id);
+        });
       $row.append($("<td>").append($btn));
       $tbody.append($row);
     });
   });
 
   $("#new-game-button").on("click", function () {
+    $("#creating-game-modal").modal("show");
     $("#lobby").remove();
     db.collection("games").add({
       timestamp: new Date(),
