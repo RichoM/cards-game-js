@@ -527,10 +527,16 @@ function initializeLobby() {
   db.collection("games").onSnapshot(snapshot => {
     let $tbody = $("#games-table tbody");
     $tbody.html("");
+    let games = [];
     snapshot.forEach((doc, i) => {
-      let game = doc.data();
+      let data = doc.data();
+      data.id = doc.id;
+      games.push(data);
+    });
+    games.sort((a, b) => a.timestamp < b.timestamp ? 1 : -1);
+    games.forEach(game => {
       let $row = $("<tr>")
-        .append($("<td>").text(doc.id))
+        .append($("<td>").text(game.id))
         .append($("<td>").text(displayState(game.state)))
         .append($("<td>").text(game.playerNames.join(", ")));
       let $btn = $("<button>")
@@ -538,7 +544,7 @@ function initializeLobby() {
         .text("Unirse")
         .on("click", () => {
           showSpinner("Entrando al juego...");
-          joinGame(doc.id);
+          joinGame(game.id);
         });
       $row.append($("<td>").append($btn));
       $tbody.append($row);
