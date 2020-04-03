@@ -249,6 +249,7 @@ function updateUI() {
   });
 
   if (currentGame.state == "playing" && currentGame.turn >= 0) {
+    $("#start-game-button").hide();
     try {
       if (currentGame.players[currentGame.turn].id == playerId) {
         $("#throw-cards-button").text(selectedCards.size == 1 ?
@@ -262,6 +263,8 @@ function updateUI() {
     } catch (err) {
       debugger;
     }
+  } else if (currentGame.state == "pending") {
+    $("#start-game-button").show();
   }
 }
 
@@ -335,7 +338,11 @@ function joinGame(gameId) {
   gameRef.collection("players").add({
     name: userName,
     cards: []
-  }).then(doc => playerId = doc.id);
+  }).then(doc => {
+    playerId = doc.id;
+    $("#game").show();
+    updateUI();
+  });
 
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
@@ -351,7 +358,7 @@ function joinGame(gameId) {
 
   $("#throw-cards-button").on("click", function () {
     $("#throw-cards-button").hide();
-    $("#pass--button").hide();
+    $("#pass-turn-button").hide();
 
     let player = currentGame.players.find(p => p.id == playerId);
     let card_indices = Array.from(selectedCards).sort((a, b) => b - a); // DESC
@@ -371,8 +378,6 @@ function joinGame(gameId) {
   });
 
   $("#game-id").text("Código: " + gameId);
-  $("#start-game-button").show();
-  $("#game").show();
 }
 
 function resizeCanvas() {
