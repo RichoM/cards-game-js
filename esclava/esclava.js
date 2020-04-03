@@ -344,7 +344,7 @@ function joinGame(gameId) {
   }).then(doc => {
     playerId = doc.id;
     $("#game").show();
-    $("#creating-game-modal").modal("hide");
+    hideSpinner();
     updateUI();
   });
 
@@ -514,6 +514,15 @@ function askUserName() {
   $("#lobby").show();
 }
 
+function showSpinner(msg) {
+  $("#spinner-modal-msg").text(msg);
+  $("#spinner-modal").modal("show");
+}
+
+function hideSpinner() {
+  $("#spinner-modal").modal("hide");
+}
+
 function initializeLobby() {
   db.collection("games").onSnapshot(snapshot => {
     let $tbody = $("#games-table tbody");
@@ -528,7 +537,7 @@ function initializeLobby() {
         .addClass("btn").addClass("btn-sm").addClass("btn-outline-info")
         .text("Unirse")
         .on("click", () => {
-          $("#creating-game-modal").modal("show");
+          showSpinner("Entrando al juego...");
           joinGame(doc.id);
         });
       $row.append($("<td>").append($btn));
@@ -537,7 +546,7 @@ function initializeLobby() {
   });
 
   $("#new-game-button").on("click", function () {
-    $("#creating-game-modal").modal("show");
+    showSpinner("Creando juego...");
     $("#lobby").remove();
     db.collection("games").add({
       timestamp: new Date(),
