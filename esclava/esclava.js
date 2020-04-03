@@ -488,7 +488,8 @@ function initializeCanvas() {
   $(window).resize(resizeCanvas);
 
   let last = 0;
-  function privateDraw(now) {
+  function privateDraw() {
+    let now = +new Date();
     ctx.resetTransform();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let delta = (now - last) / 1000;
