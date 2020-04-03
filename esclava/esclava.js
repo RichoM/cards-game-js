@@ -377,6 +377,17 @@ function joinGame(gameId) {
     });
   });
 
+
+  $("#pass-turn-button").on("click", function () {
+    $("#throw-cards-button").hide();
+    $("#pass-turn-button").hide();
+
+    selectedCards.clear();
+    gameRef.update({
+      turn: (currentGame.turn + 1) % currentGame.players.length,
+    }).then(updateUI);
+  });
+
   $("#game-id").text("Código: " + gameId);
 }
 
