@@ -5,6 +5,7 @@ let spritesheet = null;
 let scrollOffset = 0;
 let scrollAccel = 0;
 let selectedCards = new Set();
+let discardedTransforms = [];
 let canvas = null;
 let ctx = null;
 
@@ -21,23 +22,6 @@ function $star(n) {
     $span.append($("<i>").addClass("fas").addClass("fa-star"));
   }
   return $span;
-}
-
-function drawCard(card) {
-  ctx.drawImage(card, -card.width/2, -card.height/2);
-}
-
-function drawDeck() {
-  spritesheet.then(cards => {
-    let card = cards[49];
-    ctx.translate(canvas.width/2, canvas.height/2);
-    let inc = 3;
-    let steps = 5;
-    for (let i = 0; i < steps; i++) {
-      drawCard(card);
-      ctx.translate(inc, -inc);
-    }
-  });
 }
 
 let origin = null;
@@ -84,19 +68,69 @@ function click(pos) {
       }
     }
   }
+  updateUI();
 }
 
 
+
+function drawCard(card) {
+  ctx.drawImage(card, -card.width/2, -card.height/2);
+}
+
+function drawDeck() {
+  spritesheet.then(cards => {
+    let card = cards[49];
+    ctx.translate(canvas.width/2, canvas.height/2);
+    let inc = 3;
+    let steps = 5;
+    for (let i = 0; i < steps; i++) {
+      drawCard(card);
+      ctx.translate(inc, -inc);
+    }
+  });
+}
+
+function suitIndex(suit) {
+  let suits = ["oro", "copa", "espada", "basto"];
+  return suits.indexOf(suit);
+}
+
+function cardIndex(card) {
+  return (card.number - 1) + suitIndex(card.suit) * 12;
+}
+
+function rnd(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function drawDiscarded(cards) {
+  spritesheet.then(sprites => {
+    let imgs = cards.map(cardIndex).map(i => sprites[i]);
+
+    imgs.forEach((card, i) => {
+      let t = discardedTransforms[i];
+
+      ctx.resetTransform();
+      ctx.translate(canvas.width/2, canvas.height/2 - card.height*0.5);
+      if (!t) {
+        t = {
+          x: rnd(-15, 15),
+          y: rnd(-15, 15),
+          r: rnd(-15, 15) * Math.PI/180
+        };
+        discardedTransforms.push(t);
+      }
+
+      ctx.translate(t.x, t.y);
+      ctx.rotate(t.r);
+
+      drawCard(card);
+    });
+
+  });
+}
+
 function drawHand(hand) {
-
-  function suitIndex(suit) {
-    let suits = ["oro", "copa", "espada", "basto"];
-    return suits.indexOf(suit);
-  }
-  function cardIndex(card) {
-    return (card.number - 1) + suitIndex(card.suit) * 12;
-  }
-
   spritesheet.then(sprites => {
     let imgs = hand.map(cardIndex).map(i => sprites[i]);
 
@@ -108,9 +142,23 @@ function drawHand(hand) {
 
     min = -angle * (imgs.length / 2);
     max = angle * (imgs.length / 2);
-    if (scrollOffset < min + angle) scrollAccel = 0.35;
-    if (scrollOffset > max - angle) scrollAccel = -0.35;
 
+    let leftLimit = min + angle;
+    let rightLimit = max - angle;
+    if (leftLimit > rightLimit) {
+      leftLimit = -angle/2;
+      rightLimit = angle/2;
+    }
+    if (scrollOffset < leftLimit) {
+      scrollAccel = Math.min(0.35, (leftLimit - scrollOffset) * 0.5); // 0.35
+      console.log(scrollAccel);
+    }
+    if (scrollOffset > rightLimit) {
+      scrollAccel = Math.max(-0.35, (rightLimit - scrollOffset) * 0.5);
+      console.log(scrollAccel);
+    }
+
+    ctx.resetTransform();
     ctx.translate(origin.x, origin.y);
     ctx.rotate(min * Math.PI / 180);
     ctx.rotate(scrollOffset * Math.PI / 180);
@@ -127,15 +175,6 @@ function drawHand(hand) {
 
       ctx.rotate(angle * Math.PI / 180);
     });
-    /*
-    let step = 60;
-    ctx.translate(canvas.width/2 + scrollOffset, canvas.height - 40);
-    ctx.translate(-step * (imgs.length/2), 0);
-    imgs.forEach(img => {
-      drawCard(img);
-      ctx.translate(step, 0);
-    });
-    */
   });
 }
 
@@ -144,6 +183,9 @@ function draw(delta) {
   if (currentGame.state == "pending") {
     drawDeck();
   } else if (currentGame.state = "playing") {
+
+    drawDiscarded(currentGame.discarded);
+
     let player = currentGame.players.find(p => p.id == playerId);
     if (player && player.cards.length > 0) {
       drawHand(player.cards);
@@ -175,7 +217,7 @@ function updateUI() {
   $players.append($("<h5>").text("Jugadores:"));
   let turn = currentGame.turn;
   currentGame.players.forEach((player, i) => {
-    let $name = $("<div>").text(player.name);
+    let $name = $("<div>").text(player.name + (player.id == playerId ? " (yo)" : ""));
 
     let $row = $("<div>")
       .addClass("row")
@@ -205,6 +247,22 @@ function updateUI() {
     }
     $players.append($row);
   });
+
+  if (currentGame.state == "playing" && currentGame.turn >= 0) {
+    try {
+      if (currentGame.players[currentGame.turn].id == playerId) {
+        $("#throw-cards-button").text(selectedCards.size == 1 ?
+          "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
+        $("#throw-cards-button").show();
+        $("#pass-turn-button").show();
+      } else {
+        $("#throw-cards-button").hide();
+        $("#pass-turn-button").hide();
+      }
+    } catch (err) {
+      debugger;
+    }
+  }
 }
 
 function shuffle(array) {
@@ -282,9 +340,34 @@ function joinGame(gameId) {
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
     gameRef.update({
-      turn: Math.floor(Math.random() * currentGame.players.length),
+      //turn: Math.floor(Math.random() * currentGame.players.length),
+
+      // HACK(Richo)
+      turn: currentGame.players.findIndex(p => p.id == playerId),
+
       state: "playing"
     }).then(startGame);
+  });
+
+  $("#throw-cards-button").on("click", function () {
+    $("#throw-cards-button").hide();
+    $("#pass--button").hide();
+
+    let player = currentGame.players.find(p => p.id == playerId);
+    let card_indices = Array.from(selectedCards).sort((a, b) => b - a); // DESC
+    let discarded_cards = currentGame.discarded.concat(card_indices.map(i => player.cards[i]));
+
+    let new_hand = Array.from(player.cards);
+    card_indices.forEach(index => new_hand.splice(index, 1));
+
+    selectedCards.clear();
+    gameRef.update({
+      turn: (currentGame.turn + 1) % currentGame.players.length,
+      discarded: discarded_cards
+    });
+    db.collection("games").doc(currentGame.id).collection("players").doc(playerId).update({
+      cards: new_hand
+    });
   });
 
   $("#game-id").text("Código: " + gameId);
@@ -434,7 +517,8 @@ function initializeLobby() {
     db.collection("games").add({
       timestamp: new Date(),
       state: "pending",
-      playerNames: []
+      playerNames: [],
+      discarded: []
     }).then(doc => joinGame(doc.id));
   });
 
