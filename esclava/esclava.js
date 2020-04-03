@@ -81,6 +81,7 @@ function drawDeck() {
   spritesheet.then(cards => {
     let card = cards[49];
     ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.scale(0.8, 0.8);
     let inc = 3;
     let steps = 5;
     for (let i = 0; i < steps; i++) {
@@ -111,11 +112,13 @@ function drawDiscarded(cards) {
       let t = discardedTransforms[i];
 
       ctx.resetTransform();
-      ctx.translate(canvas.width/2, canvas.height/2 - card.height*0.5);
+      ctx.translate(canvas.width/2, canvas.height/2 - card.height*0.25);
+      ctx.scale(0.8, 0.8);
+
       if (!t) {
         t = {
           x: rnd(-15, 15),
-          y: rnd(-15, 15),
+          y: rnd(-10, 10),
           r: rnd(-15, 15) * Math.PI/180
         };
         discardedTransforms.push(t);
