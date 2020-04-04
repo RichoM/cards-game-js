@@ -352,6 +352,7 @@ function startGame() {
   suits.forEach((suit, i) => {
     for (let i = 1; i <= 12; i++) {
       deck.push({ number: i, suit: suit });
+      deck.push({ number: i, suit: suit });
     }
   });
   shuffle(deck);
