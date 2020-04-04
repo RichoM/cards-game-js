@@ -171,12 +171,15 @@ function drawHand(hand) {
       let selected = selectedCards.has(i);
       ctx.translate(0, -(radius + (selected ? img.height*0.2 : 0)));
       drawCard(img);
-
+      
+      /*
+      // NOTE(Richo): Draw some text on the top of the card for debugging purposes
       ctx.font = "16px Arial";
       ctx.textAlign = "center";
       ctx.fillText("" + i + " - " + (min + scrollOffset + angle * i).toFixed(2), 0, -(img.height/2 + 10));
-      ctx.translate(0, (radius + (selected ? img.height*0.2 : 0)));
+      */
 
+      ctx.translate(0, (radius + (selected ? img.height*0.2 : 0)));
       ctx.rotate(angle * Math.PI / 180);
     });
   });
