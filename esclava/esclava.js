@@ -47,10 +47,11 @@ function click(pos) {
   let d = dist(pos, origin);
   if (d < click_radius) {
     let player = currentGame.players.find(p => p.id == playerId);
-    if (!player || player.cards.length == 0) return;
+    let playerHand = getHand(player);
+    if (playerHand.length == 0) return;
 
     let click_angle = -1 * (Math.atan2(origin.x - pos.x, origin.y - pos.y) * (180 / Math.PI));
-    let angles = player.cards.map((card, i) => min + scrollOffset + angle * i);
+    let angles = playerHand.map((card, i) => min + scrollOffset + angle * i);
     let min_dist = null;
     let min_i = null;
     angles.forEach((angle, i) => {
@@ -181,6 +182,11 @@ function drawHand(hand) {
   });
 }
 
+function getHand(player) {
+  if (!player || !player.cards) return [];
+  return player.cards;
+}
+
 function draw(delta) {
   if (!currentGame) return;
   if (currentGame.state == "pending") {
@@ -189,9 +195,9 @@ function draw(delta) {
 
     drawDiscarded(currentGame.discarded);
 
-    let player = currentGame.players.find(p => p.id == playerId);
-    if (player && player.cards.length > 0) {
-      drawHand(player.cards);
+    let playerHand = getHand(currentGame.players.find(p => p.id == playerId));
+    if (playerHand.length > 0) {
+      drawHand(playerHand);
     }
   }
 
@@ -229,9 +235,10 @@ function updateUI() {
         .css("text-align", "right")
         .append($name));
 
-    if (player.cards.length > 0) {
-      let msg = player.cards.length == 1 ?
-                  "1 carta" : player.cards.length + " cartas";
+    let playerHand = getHand(player);
+    if (playerHand.length > 0) {
+      let msg = playerHand.length == 1 ?
+                  "1 carta" : playerHand.length + " cartas";
       $row.append($("<div>")
         .addClass("col-4")
         .text(msg));
@@ -327,22 +334,18 @@ function joinGame(gameId) {
   });
   gameRef.collection("players").onSnapshot(snapshot => {
     let players = [];
-    snapshot.forEach(doc => {
-      let data = doc.data();
-      data.id = doc.id;
-      players.push(data);
-    });
+    snapshot.forEach(doc => players.push(doc.data()));
     updatePlayers(players);
   });
 
   gameRef.update({
     playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
   });
-  gameRef.collection("players").add({
+  gameRef.collection("players").doc(playerId).set({
+    id: playerId,
     name: userName,
-    cards: []
-  }).then(doc => {
-    playerId = doc.id;
+    //cards: []
+  }, { merge: true }).then(doc => {
     $("#game").show();
     hideSpinner();
     updateUI();
@@ -602,7 +605,16 @@ function initializeSpritesheet() {
   spritesheet = loadSpritesheet("cards.png", 208, 319, 50);
 }
 
+function initializePlayerId() {
+  playerId = localStorage.getItem("player-id");
+  if (playerId == undefined) {
+    playerId = uuid();
+    localStorage.setItem("player-id", playerId);
+  }
+}
+
 $(document).ready(function () {
+  initializePlayerId();
   initializeCanvas();
   initializeLobby();
   initializeSpritesheet();
