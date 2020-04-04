@@ -40,7 +40,6 @@ function dist(a, b) {
 function scroll(begin, end) {
   hdist = end.x - begin.x;
   scrollAccel = hdist * 0.025;
-  console.log("SCROLL: " + hdist);
 }
 
 function getCurrentPlayer() {
@@ -166,11 +165,9 @@ function drawHand(hand) {
     }
     if (scrollOffset < leftLimit) {
       scrollAccel = Math.min(0.35, (leftLimit - scrollOffset) * 0.5); // 0.35
-      console.log(scrollAccel);
     }
     if (scrollOffset > rightLimit) {
       scrollAccel = Math.max(-0.35, (rightLimit - scrollOffset) * 0.5);
-      console.log(scrollAccel);
     }
 
     ctx.resetTransform();
@@ -216,6 +213,7 @@ function draw(delta) {
   }
 
   scrollOffset += scrollAccel;
+  scrollOffset %= 360;
   if (Math.abs(scrollAccel) > 0.0001) {
     scrollAccel /= 70 * delta;
   } else {
@@ -542,11 +540,13 @@ function initializeCanvas() {
   let last = 0;
   function privateDraw() {
     let now = +new Date();
-    ctx.resetTransform();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     let delta = (now - last) / 1000;
-    draw(delta);
-    last = now;
+    if (delta > 0.01) {
+      ctx.resetTransform();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      draw(delta);
+      last = now;
+    }
     requestAnimationFrame(privateDraw);
   }
   privateDraw();
