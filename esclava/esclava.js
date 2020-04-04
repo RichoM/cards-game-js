@@ -354,10 +354,10 @@ function shuffle(array) {
   return array;
 }
 
-function startGame() {
+function createDeck(nplayers) {
   let deck = [];
   let suits = ["oro", "copa", "espada", "basto"];
-  let ndecks = currentGame.players.length == 1 ? 1 : 2;
+  let ndecks = nplayers == 1 ? 1 : 2;
   suits.forEach((suit, i) => {
     for (let i = 1; i <= 12; i++) {
       for (let j = 0; j < ndecks; j++) {
@@ -366,8 +366,10 @@ function startGame() {
     }
   });
   shuffle(deck);
+  return deck;
+}
 
-  let players = currentGame.players;
+function dealCards(deck, players) {
   let hands = players.map(each => []);
   let i = 0;
   while (deck.length > 0) {
@@ -375,6 +377,7 @@ function startGame() {
     i = (i + 1) % players.length;
   }
 
+  // Sort each hand by card's value
   for (let i = 0; i < hands.length; i++) {
     hands[i].sort((a, b) => {
       if (a.number == 1) return 1;
@@ -382,8 +385,14 @@ function startGame() {
       return a.number - b.number;
     });
   }
+  return hands;
+}
 
-  players.forEach((player, i) => {
+function startGame() {
+  let deck = createDeck(currentGame.players.length);
+  let hands = dealCards(deck, currentGame.players);
+
+  currentGame.players.forEach((player, i) => {
     db.collection("games").doc(currentGame.id).collection("players").doc(player.id).update({
       cards: hands[i]
     })
