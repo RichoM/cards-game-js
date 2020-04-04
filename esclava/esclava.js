@@ -10,6 +10,8 @@ let lastMove = "";
 let canvas = null;
 let ctx = null;
 
+let root = "games_dev";
+
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
   else if (state == "playing") return "Jugando";
@@ -44,20 +46,17 @@ function scroll(begin, end) {
 }
 
 function getCurrentPlayer() {
-  if (currentGame.players &&
-      currentGame.turn >= 0 &&
-      currentGame.turn < currentGame.players.length) {
-    return currentGame.players[currentGame.turn];
-  }
+  let players = getActivePlayers(currentGame);
+  if (currentGame.turn < 0 || currentGame.turn >= players.length) return null;
+  return players[currentGame.turn];
 }
 
 function click(pos) {
-  let currentPlayer = getCurrentPlayer();
-  if (!currentPlayer || currentPlayer.id != playerId) return;
+  let player = getCurrentPlayer();
+  if (!player || player.id != playerId) return;
 
   let d = dist(pos, origin);
   if (d < click_radius) {
-    let player = currentGame.players.find(p => p.id == playerId);
     let playerHand = getHand(player);
     if (playerHand.length == 0) return;
 
@@ -207,7 +206,7 @@ function draw(delta) {
 
     drawDiscarded(currentGame.discarded);
 
-    let playerHand = getHand(currentGame.players.find(p => p.id == playerId));
+    let playerHand = getHand(getActivePlayers(currentGame).find(p => p.id == playerId));
     if (playerHand.length > 0) {
       drawHand(playerHand);
     }
@@ -255,7 +254,7 @@ function updateUI() {
   let $players = $("#players-table");
   $players.html("");
   $players.append($("<h5>").text("Jugadores:"));
-  let turn = currentGame.turn;
+  let currentPlayer = getCurrentPlayer();
   currentGame.players.forEach((player, i) => {
     let $name = $("<div>").text(player.name + (player.id == playerId ? " (yo)" : ""));
 
@@ -275,14 +274,14 @@ function updateUI() {
         .text(msg));
     }
 
-    // TODO(Richo): Use stars to count wins
-    if (false) {
+    let winners = currentGame.winners || [];
+    if (winners.length > 0 && winners[0] == player.id) {
       $row.append($("<div>")
         .addClass("col-1")
         .append($star(0)));
     }
 
-    if (i == turn) {
+    if (currentPlayer && player.id == currentPlayer.id) {
       $row.addClass("turn");
       $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
     }
@@ -357,9 +356,9 @@ function shuffle(array) {
 function createDeck(nplayers) {
   let deck = [];
   let suits = ["oro", "copa", "espada", "basto"];
-  let ndecks = nplayers == 1 ? 1 : 2;
+  let ndecks = 1; //nplayers == 1 ? 1 : 2;
   suits.forEach((suit, i) => {
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= 6; i++) {
       for (let j = 0; j < ndecks; j++) {
         deck.push({ number: i, suit: suit });
       }
@@ -393,16 +392,22 @@ function startGame() {
   let hands = dealCards(deck, currentGame.players);
 
   currentGame.players.forEach((player, i) => {
-    db.collection("games").doc(currentGame.id).collection("players").doc(player.id).update({
+    db.collection(root).doc(currentGame.id).collection("players").doc(player.id).update({
       cards: hands[i]
     })
   });
 }
 
+function getActivePlayers(game) {
+  if (!game.players) return [];
+  let winners = new Set(game.winners || []);
+  return game.players.filter(p => !winners.has(p.id));
+}
+
 function joinGame(gameId, isPlaying) {
   $("#lobby").hide();
 
-  let gameRef = db.collection("games").doc(gameId);
+  let gameRef = db.collection(root).doc(gameId);
 
   gameRef.onSnapshot(snapshot => {
     let data = snapshot.data();
@@ -437,7 +442,7 @@ function joinGame(gameId, isPlaying) {
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
     gameRef.update({
-      turn: Math.floor(Math.random() * currentGame.players.length),
+      turn: Math.floor(Math.random() * getActivePlayers(currentGame).length),
       state: "playing",
       passes: 0,
       lastMove: "",
@@ -458,7 +463,33 @@ function joinGame(gameId, isPlaying) {
 
     selectedCards.clear();
 
-    if (discarded_cards[discarded_cards.length-1].number == 1) {
+    if (new_hand.length == 0) {
+      let activePlayers = getActivePlayers(currentGame);
+      if (activePlayers.length == 2) { // End game
+        let winners = (currentGame.winners || []).concat(playerId);
+        let loser = activePlayers.find(p => p.id != playerId);
+        winners.push(loser);
+        gameRef.update({
+          discarded: discarded_cards,
+          ncards: ncards,
+          passes: 0,
+          lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
+          winners: winners
+        }).then(() => {
+          debugger;
+        });
+      } else { // Game continues without current player
+        gameRef.update({
+          discarded: discarded_cards,
+          ncards: ncards,
+          passes: 0,
+          lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
+          winners: (currentGame.winners || []).concat(playerId)
+        }).then(() => {
+          // TODO(Richo): Fireworks!
+        });
+      }
+    } else if (discarded_cards[discarded_cards.length-1].number == 1) {
       gameRef.update({
         turn: -1,
         discarded: discarded_cards,
@@ -468,7 +499,7 @@ function joinGame(gameId, isPlaying) {
       }).then(() => {
         setTimeout(() => {
           gameRef.update({
-            turn: currentGame.players.findIndex(p => p.id == playerId),
+            turn: getActivePlayers(currentGame).findIndex(p => p.id == playerId),
             discarded: [],
             ncards: null,
           })
@@ -476,7 +507,7 @@ function joinGame(gameId, isPlaying) {
       });
     } else {
       gameRef.update({
-        turn: (currentGame.turn + 1) % currentGame.players.length,
+        turn: (currentGame.turn + 1) % getActivePlayers(currentGame).length,
         discarded: discarded_cards,
         ncards: ncards,
         passes: 0,
@@ -484,7 +515,7 @@ function joinGame(gameId, isPlaying) {
       });
     }
 
-    db.collection("games").doc(currentGame.id).collection("players").doc(playerId).update({
+    db.collection(root).doc(currentGame.id).collection("players").doc(playerId).update({
       cards: new_hand
     });
   });
@@ -494,21 +525,21 @@ function joinGame(gameId, isPlaying) {
     $("#pass-turn-button").hide();
 
     selectedCards.clear();
-    if (currentGame.passes + 1 == currentGame.players.length) {
+    if (currentGame.passes + 1 == getActivePlayers(currentGame).length) {
       gameRef.update({
         turn: -1,
         passes: currentGame.passes + 1,
         lastMove: userName + " pasó"
       }).then(() => {
         gameRef.update({
-          turn: currentGame.players.findIndex(p => p.id == playerId),
+          turn: getActivePlayers(currentGame).findIndex(p => p.id == playerId),
           discarded: [],
           ncards: null,
         });
       });
     } else {
       gameRef.update({
-        turn: (currentGame.turn + 1) % currentGame.players.length,
+        turn: (currentGame.turn + 1) % getActivePlayers(currentGame).length,
         passes: currentGame.passes + 1,
         lastMove: userName + " pasó"
       }).then(updateUI);
@@ -660,7 +691,7 @@ function showAlert(msg, time) {
 }
 
 function initializeLobby() {
-  db.collection("games").onSnapshot(snapshot => {
+  db.collection(root).onSnapshot(snapshot => {
     let $tbody = $("#games-table tbody");
     $tbody.html("");
     let games = [];
@@ -693,11 +724,12 @@ function initializeLobby() {
   $("#new-game-button").on("click", function () {
     showSpinner("Creando juego...");
     $("#lobby").remove();
-    db.collection("games").add({
+    db.collection(root).add({
       timestamp: new Date(),
       state: "pending",
       playerNames: [],
-      discarded: []
+      discarded: [],
+      winners: []
     }).then(doc => joinGame(doc.id, false));
   });
 
