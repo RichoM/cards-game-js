@@ -232,6 +232,22 @@ function updatePlayers(players) {
   updateUI();
 }
 
+function countUnique(iterable) {
+  return new Set(iterable).size;
+}
+
+function isValidMove(selection) {
+  if (countUnique(selection.map(c => c.number)) != 1) return false;
+  if (currentGame.discarded.length == 0) return true;
+
+  let number = selection[0].number;
+  let lastNumber = currentGame.discarded[currentGame.discarded.length-1].number;
+
+  if (number == 1) { number = 13; }
+  if (lastNumber == 1) { lastNumber = 13; }
+  return number > lastNumber;
+}
+
 function updateUI() {
   let $players = $("#players-table");
   $players.html("");
@@ -278,8 +294,9 @@ function updateUI() {
 
         $("#throw-cards-button").show();
 
-        if (selectedCards.size == currentGame.ncards ||
-            (selectedCards.size > 0 && currentGame.discarded.length == 0)) {
+        if ((selectedCards.size == currentGame.ncards ||
+            (selectedCards.size > 0 && currentGame.discarded.length == 0)) &&
+            isValidMove(Array.from(selectedCards).map(i => currentPlayer.cards[i]))) {
           $("#throw-cards-button").attr("disabled", null);
         } else {
           $("#throw-cards-button").attr("disabled", true);
