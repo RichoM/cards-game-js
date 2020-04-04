@@ -278,19 +278,25 @@ function updateUI() {
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
 
-        $("#throw-cards-button").text(selectedCards.size == 1 ?
-          "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
         $("#throw-cards-button").show();
-        if (selectedCards.size == 0) {
-          $("#throw-cards-button").attr("disabled", true);
-        } else {
+
+        if (selectedCards.size == currentGame.ncards ||
+            (selectedCards.size > 0 && currentGame.discarded.length == 0)) {
           $("#throw-cards-button").attr("disabled", null);
+        } else {
+          $("#throw-cards-button").attr("disabled", true);
         }
 
         if (currentGame.discarded.length == 0) {
           $("#pass-turn-button").hide();
+
+          $("#throw-cards-button").text(selectedCards.size == 1 ?
+            "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
         } else {
           $("#pass-turn-button").show();
+
+          $("#throw-cards-button").text(currentGame.ncards == 1 ?
+            "Tirar 1 carta" : "Tirar " + currentGame.ncards + " cartas");
         }
 
       } else {
@@ -407,6 +413,7 @@ function joinGame(gameId) {
     let player = currentGame.players.find(p => p.id == playerId);
     let card_indices = Array.from(selectedCards).sort((a, b) => b - a); // DESC
     let discarded_cards = currentGame.discarded.concat(card_indices.map(i => player.cards[i]));
+    let ncards = selectedCards.size;
 
     let new_hand = Array.from(player.cards);
     card_indices.forEach(index => new_hand.splice(index, 1));
@@ -414,7 +421,8 @@ function joinGame(gameId) {
     selectedCards.clear();
     gameRef.update({
       turn: (currentGame.turn + 1) % currentGame.players.length,
-      discarded: discarded_cards
+      discarded: discarded_cards,
+      ncards: ncards
     });
     db.collection("games").doc(currentGame.id).collection("players").doc(playerId).update({
       cards: new_hand
