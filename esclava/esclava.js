@@ -322,6 +322,14 @@ function startGame() {
     i = (i + 1) % players.length;
   }
 
+  for (let i = 0; i < hands.length; i++) {
+    hands[i].sort((a, b) => {
+      if (a.number == 1) return 1;
+      if (b.number == 1) return -1;
+      return a.number - b.number;
+    });
+  }
+
   players.forEach((player, i) => {
     db.collection("games").doc(currentGame.id).collection("players").doc(player.id).update({
       cards: hands[i]
