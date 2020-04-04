@@ -289,6 +289,15 @@ function updateUI() {
   if (currentGame.state == "playing") {
     $("#start-game-button").hide();
     try {
+
+      if (currentGame.passes >= currentGame.players.length ||
+          (currentGame.discarded.length > 0 &&
+          currentGame.discarded[currentGame.discarded.length-1].number == 1)) {
+        showSpinner("FIN!");
+        setTimeout(hideSpinner, 1000);
+        return;
+      }
+
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
 
@@ -413,12 +422,9 @@ function joinGame(gameId) {
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
     gameRef.update({
-      //turn: Math.floor(Math.random() * currentGame.players.length),
-
-      // HACK(Richo)
-      turn: currentGame.players.findIndex(p => p.id == playerId),
-
-      state: "playing"
+      turn: Math.floor(Math.random() * currentGame.players.length),
+      state: "playing",
+      passes: 0
     }).then(startGame);
   });
 
@@ -438,7 +444,8 @@ function joinGame(gameId) {
     gameRef.update({
       turn: (currentGame.turn + 1) % currentGame.players.length,
       discarded: discarded_cards,
-      ncards: ncards
+      ncards: ncards,
+      passes: 0
     });
     db.collection("games").doc(currentGame.id).collection("players").doc(playerId).update({
       cards: new_hand
@@ -453,6 +460,7 @@ function joinGame(gameId) {
     selectedCards.clear();
     gameRef.update({
       turn: (currentGame.turn + 1) % currentGame.players.length,
+      passes: currentGame.passes + 1
     }).then(updateUI);
   });
 
