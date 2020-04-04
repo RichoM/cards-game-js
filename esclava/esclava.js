@@ -290,9 +290,8 @@ function updateUI() {
     $("#start-game-button").hide();
     try {
 
-      if (currentGame.passes >= currentGame.players.length ||
-          (currentGame.discarded.length > 0 &&
-          currentGame.discarded[currentGame.discarded.length-1].number == 1)) {
+      if ((currentGame.players.length > 0 && currentGame.passes >= currentGame.players.length) ||
+          (currentGame.discarded.length > 0 && currentGame.discarded[currentGame.discarded.length-1].number == 1)) {
         showSpinner("FIN!");
         setTimeout(hideSpinner, 1000);
         return;
@@ -391,7 +390,7 @@ function startGame() {
   });
 }
 
-function joinGame(gameId) {
+function joinGame(gameId, isPlaying) {
   $("#lobby").hide();
 
   let gameRef = db.collection("games").doc(gameId);
@@ -407,19 +406,24 @@ function joinGame(gameId) {
     updatePlayers(players);
   });
 
-  gameRef.update({
-    playerIds: firebase.firestore.FieldValue.arrayUnion(playerId),
-    playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
-  });
-  gameRef.collection("players").doc(playerId).set({
-    id: playerId,
-    name: userName,
-    //cards: []
-  }, { merge: true }).then(doc => {
+  if (isPlaying) {
     $("#game").show();
-    hideSpinner();
-    updateUI();
-  });
+    setTimeout(hideSpinner, 1000);
+  } else {
+    gameRef.update({
+      playerIds: firebase.firestore.FieldValue.arrayUnion(playerId),
+      playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
+    });
+    gameRef.collection("players").doc(playerId).set({
+      id: playerId,
+      name: userName,
+      //cards: []
+    }, { merge: true }).then(doc => {
+      $("#game").show();
+      hideSpinner();
+      updateUI();
+    });
+  }
 
   $("#start-game-button").on("click", function () {
     $("#start-game-button").hide();
@@ -453,7 +457,6 @@ function joinGame(gameId) {
       cards: new_hand
     });
   });
-
 
   $("#pass-turn-button").on("click", function () {
     $("#throw-cards-button").hide();
@@ -623,7 +626,7 @@ function initializeLobby() {
         .text("Entrar")
         .on("click", () => {
           showSpinner("Entrando al juego...");
-          joinGame(game.id);
+          joinGame(game.id, game.state == "playing");
         });
       $row.append($("<td>").append($btn));
       $tbody.append($row);
@@ -638,7 +641,7 @@ function initializeLobby() {
       state: "pending",
       playerNames: [],
       discarded: []
-    }).then(doc => joinGame(doc.id));
+    }).then(doc => joinGame(doc.id, false));
   });
 
   $("#change-name-button").on("click", function () {
