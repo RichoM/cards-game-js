@@ -171,7 +171,7 @@ function drawHand(hand) {
       let selected = selectedCards.has(i);
       ctx.translate(0, -(radius + (selected ? img.height*0.2 : 0)));
       drawCard(img);
-      
+
       /*
       // NOTE(Richo): Draw some text on the top of the card for debugging purposes
       ctx.font = "16px Arial";
@@ -346,6 +346,7 @@ function joinGame(gameId) {
   });
 
   gameRef.update({
+    playerIds: firebase.firestore.FieldValue.arrayUnion(playerId),
     playerNames: firebase.firestore.FieldValue.arrayUnion(userName)
   });
   gameRef.collection("players").doc(playerId).set({
@@ -549,9 +550,12 @@ function initializeLobby() {
         .append($("<td>").text(game.id))
         .append($("<td>").text(displayState(game.state)))
         .append($("<td>").text(game.playerNames.join(", ")));
+      if (game.playerIds && game.playerIds.indexOf(playerId) >= 0) {
+        $row.css("color", "blue");
+      }
       let $btn = $("<button>")
         .addClass("btn").addClass("btn-sm").addClass("btn-outline-info")
-        .text("Unirse")
+        .text("Entrar")
         .on("click", () => {
           showSpinner("Entrando al juego...");
           joinGame(game.id);
