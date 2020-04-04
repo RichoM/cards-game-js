@@ -261,17 +261,21 @@ function updateUI() {
     $players.append($row);
   });
 
-  if (currentGame.state == "playing" && currentGame.turn >= 0) {
+  if (currentGame.state == "playing") {
     $("#start-game-button").hide();
     try {
-      if (currentGame.players[currentGame.turn].id == playerId) {
-        $("#throw-cards-button").text(selectedCards.size == 1 ?
-          "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
-        $("#throw-cards-button").show();
-        $("#pass-turn-button").show();
-      } else {
-        $("#throw-cards-button").hide();
-        $("#pass-turn-button").hide();
+      if (currentGame.players &&
+          currentGame.turn >= 0 &&
+          currentGame.turn < currentGame.players.length) {
+        if (currentGame.players[currentGame.turn].id == playerId) {
+          $("#throw-cards-button").text(selectedCards.size == 1 ?
+            "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
+          $("#throw-cards-button").show();
+          $("#pass-turn-button").show();
+        } else {
+          $("#throw-cards-button").hide();
+          $("#pass-turn-button").hide();
+        }
       }
     } catch (err) {
       debugger;
