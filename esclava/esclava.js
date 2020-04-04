@@ -289,13 +289,14 @@ function updateUI() {
   if (currentGame.state == "playing") {
     $("#start-game-button").hide();
     try {
-
+      /*
       if ((currentGame.players.length > 0 && currentGame.passes >= currentGame.players.length) ||
           (currentGame.discarded.length > 0 && currentGame.discarded[currentGame.discarded.length-1].number == 1)) {
         showSpinner("FIN!");
         setTimeout(hideSpinner, 1000);
         return;
       }
+      */
 
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
@@ -456,12 +457,31 @@ function joinGame(gameId, isPlaying) {
     card_indices.forEach(index => new_hand.splice(index, 1));
 
     selectedCards.clear();
-    gameRef.update({
-      turn: (currentGame.turn + 1) % currentGame.players.length,
-      discarded: discarded_cards,
-      ncards: ncards,
-      passes: 0
-    });
+
+    if (discarded_cards[discarded_cards.length-1].number == 1) {
+      gameRef.update({
+        turn: -1,
+        discarded: discarded_cards,
+        ncards: ncards,
+        passes: 0
+      }).then(() => {
+        setTimeout(() => {
+          gameRef.update({
+            turn: currentGame.players.findIndex(p => p.id == playerId),
+            discarded: [],
+            ncards: null,
+          })
+        }, 500);
+      });
+    } else {
+      gameRef.update({
+        turn: (currentGame.turn + 1) % currentGame.players.length,
+        discarded: discarded_cards,
+        ncards: ncards,
+        passes: 0
+      });
+    }
+
     db.collection("games").doc(currentGame.id).collection("players").doc(playerId).update({
       cards: new_hand
     });
@@ -472,10 +492,25 @@ function joinGame(gameId, isPlaying) {
     $("#pass-turn-button").hide();
 
     selectedCards.clear();
-    gameRef.update({
-      turn: (currentGame.turn + 1) % currentGame.players.length,
-      passes: currentGame.passes + 1
-    }).then(updateUI);
+    if (currentGame.passes + 1 == currentGame.players.length) {
+      gameRef.update({
+        turn: -1,
+        passes: currentGame.passes + 1
+      }).then(() => {
+        setTimeout(() => {
+          gameRef.update({
+            turn: currentGame.players.findIndex(p => p.id == playerId),
+            discarded: [],
+            ncards: null,
+          })
+        }, 500);
+      });
+    } else {
+      gameRef.update({
+        turn: (currentGame.turn + 1) % currentGame.players.length,
+        passes: currentGame.passes + 1
+      }).then(updateUI);
+    }
   });
 
   $("#game-id").text("Código: " + gameId);
