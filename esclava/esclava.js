@@ -268,15 +268,28 @@ function updateUI() {
           currentGame.turn >= 0 &&
           currentGame.turn < currentGame.players.length) {
         if (currentGame.players[currentGame.turn].id == playerId) {
+
           $("#throw-cards-button").text(selectedCards.size == 1 ?
             "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
           $("#throw-cards-button").show();
-          $("#pass-turn-button").show();
+          if (selectedCards.size == 0) {
+            $("#throw-cards-button").attr("disabled", true);
+          } else {
+            $("#throw-cards-button").attr("disabled", null);
+          }
+
+          if (currentGame.discarded.length == 0) {
+            $("#pass-turn-button").hide();
+          } else {
+            $("#pass-turn-button").show();
+          }
+
         } else {
           $("#throw-cards-button").hide();
           $("#pass-turn-button").hide();
         }
       }
+
     } catch (err) {
       debugger;
     }
