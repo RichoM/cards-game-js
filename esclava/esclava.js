@@ -6,6 +6,7 @@ let scrollOffset = 0;
 let scrollAccel = 0;
 let selectedCards = new Set();
 let discardedTransforms = [];
+let lastMove = "";
 let canvas = null;
 let ctx = null;
 
@@ -249,6 +250,8 @@ function isValidMove(selection) {
 }
 
 function updateUI() {
+  $("#msg-board").html("");
+
   let $players = $("#players-table");
   $players.html("");
   $players.append($("<h5>").text("Jugadores:"));
@@ -259,7 +262,7 @@ function updateUI() {
     let $row = $("<div>")
       .addClass("row")
       .append($("<div>")
-        .addClass("col-4")
+        .addClass("col-6")
         .css("text-align", "right")
         .append($name));
 
@@ -268,14 +271,14 @@ function updateUI() {
       let msg = playerHand.length == 1 ?
                   "1 carta" : playerHand.length + " cartas";
       $row.append($("<div>")
-        .addClass("col-4")
+        .addClass("col-5")
         .text(msg));
     }
 
     // TODO(Richo): Use stars to count wins
     if (false) {
       $row.append($("<div>")
-        .addClass("col-4")
+        .addClass("col-1")
         .append($star(0)));
     }
 
@@ -289,17 +292,13 @@ function updateUI() {
   if (currentGame.state == "playing") {
     $("#start-game-button").hide();
     try {
-      /*
-      if ((currentGame.players.length > 0 && currentGame.passes >= currentGame.players.length) ||
-          (currentGame.discarded.length > 0 && currentGame.discarded[currentGame.discarded.length-1].number == 1)) {
-        showSpinner("FIN!");
-        setTimeout(hideSpinner, 1000);
-        return;
+      if (currentGame.lastMove != "") {
+        $("#msg-board").append($("<h3>").text(currentGame.lastMove));
       }
-      */
 
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
+        $("#msg-board").append($("<h3>").text("¡Es tu turno!"));
 
         $("#throw-cards-button").show();
 
@@ -440,7 +439,8 @@ function joinGame(gameId, isPlaying) {
     gameRef.update({
       turn: Math.floor(Math.random() * currentGame.players.length),
       state: "playing",
-      passes: 0
+      passes: 0,
+      lastMove: "",
     }).then(startGame);
   });
 
@@ -463,7 +463,8 @@ function joinGame(gameId, isPlaying) {
         turn: -1,
         discarded: discarded_cards,
         ncards: ncards,
-        passes: 0
+        passes: 0,
+        lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
       }).then(() => {
         setTimeout(() => {
           gameRef.update({
@@ -478,7 +479,8 @@ function joinGame(gameId, isPlaying) {
         turn: (currentGame.turn + 1) % currentGame.players.length,
         discarded: discarded_cards,
         ncards: ncards,
-        passes: 0
+        passes: 0,
+        lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
       });
     }
 
@@ -495,20 +497,20 @@ function joinGame(gameId, isPlaying) {
     if (currentGame.passes + 1 == currentGame.players.length) {
       gameRef.update({
         turn: -1,
-        passes: currentGame.passes + 1
+        passes: currentGame.passes + 1,
+        lastMove: userName + " pasó"
       }).then(() => {
-        setTimeout(() => {
-          gameRef.update({
-            turn: currentGame.players.findIndex(p => p.id == playerId),
-            discarded: [],
-            ncards: null,
-          })
-        }, 500);
+        gameRef.update({
+          turn: currentGame.players.findIndex(p => p.id == playerId),
+          discarded: [],
+          ncards: null,
+        });
       });
     } else {
       gameRef.update({
         turn: (currentGame.turn + 1) % currentGame.players.length,
-        passes: currentGame.passes + 1
+        passes: currentGame.passes + 1,
+        lastMove: userName + " pasó"
       }).then(updateUI);
     }
   });
@@ -644,6 +646,17 @@ function showSpinner(msg) {
 
 function hideSpinner() {
   $("#spinner-modal").modal("hide");
+}
+
+function showAlert(msg, time) {
+  return new Promise(resolve => {
+    $("#alert-modal-msg").text(msg);
+    $("#alert-modal").modal("show");
+    setTimeout(() => {
+      $("#spinner-modal").modal("hide");
+      resolve();
+    }, time || 1000);
+  });
 }
 
 function initializeLobby() {
