@@ -738,7 +738,7 @@ function loadSpritesheet(src, w, h, max) {
 }
 
 function initializeSpritesheet() {
-  spritesheet = loadSpritesheet("cards.png", 208, 319, 50);
+  spritesheet = loadSpritesheet("esclava/cards.png", 208, 319, 50);
 }
 
 function initializePlayerId() {
