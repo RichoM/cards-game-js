@@ -358,10 +358,12 @@ function shuffle(array) {
 function startGame() {
   let deck = [];
   let suits = ["oro", "copa", "espada", "basto"];
+  let ndecks = currentGame.players.length == 1 ? 1 : 2;
   suits.forEach((suit, i) => {
     for (let i = 1; i <= 12; i++) {
-      deck.push({ number: i, suit: suit });
-      deck.push({ number: i, suit: suit });
+      for (let j = 0; j < ndecks; j++) {
+        deck.push({ number: i, suit: suit });
+      }
     }
   });
   shuffle(deck);
