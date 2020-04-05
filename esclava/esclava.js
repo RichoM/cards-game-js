@@ -297,7 +297,18 @@ function updateUI() {
 
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
-        $("#msg-board").append($("<h3>").text("¡Es tu turno!"));
+        function getTurnMsg(ncards) {
+          let msg = "";
+          if (ncards) {
+            msg = ncards == 1 ? "Tirá 1 carta" : "Tirá " + ncards + " cartas";
+          } else {
+            msg = "Elegí cuántas cartas tirar";
+          }
+          return msg;
+        }
+        $("#msg-board")
+          .append($("<h4>").text("¡Es tu turno!"))
+          .append($("<h4>").text(getTurnMsg(currentGame.ncards)));
 
         $("#throw-cards-button").show();
 
