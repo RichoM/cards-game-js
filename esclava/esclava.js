@@ -353,7 +353,11 @@ function updateUI() {
       debugger;
     }
   } else if (currentGame.state == "pending") {
-    $("#start-game-button").show();
+    if (currentGame.creator == playerId) {
+      $("#start-game-button").show();
+    } else {
+      $("#start-game-button").hide();
+    }
   }
 }
 
@@ -761,7 +765,8 @@ function initializeLobby() {
       state: "pending",
       playerNames: [],
       discarded: [],
-      winners: []
+      winners: [],
+      creator: playerId
     }).then(doc => joinGame(doc.id, false));
   });
 
