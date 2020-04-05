@@ -239,6 +239,7 @@ function countUnique(iterable) {
 function isValidMove(selection) {
   if (countUnique(selection.map(c => c.number)) != 1) return false;
   if (currentGame.discarded.length == 0) return true;
+  if (selection.length != currentGame.ncards) return false;
 
   let number = selection[0].number;
   let lastNumber = currentGame.discarded[currentGame.discarded.length-1].number;
@@ -297,6 +298,7 @@ function updateUI() {
 
       let currentPlayer = getCurrentPlayer();
       if (currentPlayer && currentPlayer.id == playerId) {
+
         function getTurnMsg(ncards) {
           let msg = "";
           if (ncards) {
@@ -306,28 +308,33 @@ function updateUI() {
           }
           return msg;
         }
+
         $("#msg-board")
           .append($("<h4>").text("¡Es tu turno!"))
           .append($("<h4>").text(getTurnMsg(currentGame.ncards)));
 
-        $("#throw-cards-button").show();
-
-        if ((selectedCards.size == currentGame.ncards ||
-            (selectedCards.size > 0 && currentGame.discarded.length == 0)) &&
-            isValidMove(Array.from(selectedCards).map(i => currentPlayer.cards[i]))) {
+        if (isValidMove(Array.from(selectedCards).map(i => currentPlayer.cards[i]))) {
           $("#throw-cards-button").attr("disabled", null);
+          $("#throw-cards-button").show();
+          $("#pass-turn-button").hide();
+
         } else {
           $("#throw-cards-button").attr("disabled", true);
+          $("#throw-cards-button").hide();
+          $("#pass-turn-button").show();
         }
 
         if (currentGame.discarded.length == 0) {
-          $("#pass-turn-button").hide();
-
           $("#throw-cards-button").text(selectedCards.size == 1 ?
             "Tirar 1 carta" : "Tirar " + selectedCards.size + " cartas");
-        } else {
-          $("#pass-turn-button").show();
 
+          /*
+          NOTE(Richo): If we are choosing number of cards we always show the
+          throw-cards button and hide the pass-turn button.
+          */
+          $("#throw-cards-button").show();
+          $("#pass-turn-button").hide();
+        } else {
           $("#throw-cards-button").text(currentGame.ncards == 1 ?
             "Tirar 1 carta" : "Tirar " + currentGame.ncards + " cartas");
         }
