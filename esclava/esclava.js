@@ -271,21 +271,26 @@ function updateUI() {
       let msg = playerHand.length == 1 ?
                   "1 carta" : playerHand.length + " cartas";
       $row.append($("<div>")
-        .addClass("col-5")
+        .addClass("col-sm-auto")
         .text(msg));
     }
 
     let winners = currentGame.winners || [];
     if (winners.length > 0 && winners[0] == player.id) {
       $row.append($("<div>")
-        .addClass("col-1")
+        .addClass("col-sm-auto")
         .append($star(0)));
+    } else if (player.id == currentGame.lastThrowPlayer) {
+      $row.append($("<div>")
+        .addClass("col-sm-auto")
+        .append($("<i class='fas fa-hand-paper'></i>")));
     }
 
     if (currentPlayer && player.id == currentPlayer.id) {
       $row.addClass("turn");
       $name.prepend($("<i class='fas fa-arrow-right mr-3'></i>"));
     }
+
     $players.append($row);
   });
 
@@ -482,8 +487,10 @@ function joinGame(gameId, isPlaying) {
     selectedCards.clear();
 
     if (new_hand.length == 0) {
+      // Throwing last card
       let activePlayers = getActivePlayers(currentGame);
-      if (activePlayers.length == 2) { // End game
+      if (activePlayers.length == 2) {
+        // NO players left - end of game!
         let winners = (currentGame.winners || []).concat(playerId);
         let loser = activePlayers.find(p => p.id != playerId);
         winners.push(loser);
@@ -492,11 +499,13 @@ function joinGame(gameId, isPlaying) {
           ncards: ncards,
           passes: 0,
           lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
-          winners: winners
+          winners: winners,
+          lastThrowPlayer: playerId
         }).then(() => {
           debugger;
         });
-      } else { // Game continues without current player
+      } else {
+        // Game should continue without current player
         gameRef.update({
           discarded: discarded_cards,
           ncards: ncards,
@@ -508,28 +517,33 @@ function joinGame(gameId, isPlaying) {
         });
       }
     } else if (discarded_cards[discarded_cards.length-1].number == 1) {
+      // Throwing a 1
       gameRef.update({
         turn: -1,
         discarded: discarded_cards,
         ncards: ncards,
         passes: 0,
         lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
+        lastThrowPlayer: playerId
       }).then(() => {
         setTimeout(() => {
           gameRef.update({
             turn: getActivePlayers(currentGame).findIndex(p => p.id == playerId),
             discarded: [],
             ncards: null,
+            lastThrowPlayer: null
           })
         }, 500);
       });
     } else {
+      // Regular throw
       gameRef.update({
         turn: (currentGame.turn + 1) % getActivePlayers(currentGame).length,
         discarded: discarded_cards,
         ncards: ncards,
         passes: 0,
         lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
+        lastThrowPlayer: playerId
       });
     }
 
