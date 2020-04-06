@@ -198,17 +198,53 @@ function getHand(player) {
   return player.cards;
 }
 
+function drawReceivedCards(cards) {
+  if (cards.length == 0) return;
+  spritesheet.then(sprites => {
+    let imgs = cards.map(cardIndex).map(i => sprites[i]);
+
+    let scale = 0.8;
+    ctx.resetTransform();
+    ctx.translate(canvas.width/2, canvas.height/2 - imgs[0].height * 0.25 * scale);
+    ctx.translate(0, -imgs[0].height/2 * scale - 35);
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Recibiste las siguientes cartas:", 0, 0);
+
+    ctx.resetTransform();
+    ctx.translate(canvas.width/2, canvas.height/2 - imgs[0].height * 0.25);
+    ctx.scale(scale, scale);
+
+    ctx.translate(-imgs[0].width/2 - 10, 0);
+
+    imgs.forEach((card, i) => {
+      drawCard(card);
+      ctx.translate(card.width + 10, 0);
+    });
+  });
+}
+
 function draw(delta) {
   if (!currentGame) return;
   if (currentGame.state == "pending") {
     drawDeck();
-  } else if (currentGame.state = "playing") {
+  } else if (currentGame.state == "playing") {
 
     drawDiscarded(currentGame.discarded);
 
     let playerHand = getHand(getActivePlayers(currentGame).find(p => p.id == playerId));
     if (playerHand.length > 0) {
       drawHand(playerHand);
+    }
+  } else if (currentGame.state == "exchanging") {
+
+    let playerHand = getHand(getActivePlayers(currentGame).find(p => p.id == playerId));
+    if (currentGame.previousRanking[0] == playerId) {
+      drawReceivedCards(playerHand.slice(-2));
+    }
+    if (playerHand.length > 0) {
+      // Don't draw the received cards in the hand
+      drawHand(playerHand.slice(0, -2));
     }
   }
 
@@ -237,6 +273,9 @@ function countUnique(iterable) {
 }
 
 function isValidMove(selection) {
+  // HACK(Richo): To help test
+  return true;
+
   if (countUnique(selection.map(c => c.number)) != 1) return false;
   if (currentGame.discarded.length == 0) return true;
   if (selection.length != currentGame.ncards) return false;
@@ -249,8 +288,21 @@ function isValidMove(selection) {
   return number > lastNumber;
 }
 
+let previousRanking = {number: null, players: ""};
+
 function updateUI() {
   $("#msg-board").html("");
+
+  if (currentGame.number != previousRanking.number &&
+      currentGame.previousRanking.join(",") != previousRanking.players) {
+    previousRanking = {
+      number: currentGame.number,
+      players: currentGame.previousRanking.join(",") // NOTE(Richo): Turn into string for easier comparison
+    };
+    if (currentGame.players && currentGame.players.length > 0) {
+      showRanking(currentGame.previousRanking.map(id => currentGame.players.find(p => p.id == id)));
+    }
+  }
 
   let $players = $("#players-table");
   $players.html("");
@@ -275,8 +327,8 @@ function updateUI() {
         .text(msg));
     }
 
-    let winners = currentGame.winners || [];
-    if (winners.length > 0 && winners[0] == player.id) {
+    let currentRanking = currentGame.currentRanking || [];
+    if (currentRanking.length > 0 && currentRanking[0] == player.id) {
       $row.append($("<div>")
         .addClass("col-sm-auto")
         .append($star(0)));
@@ -321,6 +373,7 @@ function updateUI() {
         if (isValidMove(Array.from(selectedCards).map(i => currentPlayer.cards[i]))) {
           $("#throw-cards-button").attr("disabled", null);
           $("#throw-cards-button").show();
+          $("#select-all-button").show();
           $("#pass-turn-button").hide();
 
         } else {
@@ -357,6 +410,12 @@ function updateUI() {
       $("#start-game-button").show();
     } else {
       $("#start-game-button").hide();
+    }
+  } else if (currentGame.state == "exchanging") {
+    if (currentGame.previousRanking[0] == playerId) {
+      $("#msg-board").append($("<h3>").text("Elegí 2 cartas para dar al esclavo"));
+    } else {
+      $("#msg-board").append($("<h3>").text("Intercambiando cartas..."));
     }
   }
 }
@@ -418,6 +477,17 @@ function startGame() {
   let deck = createDeck(currentGame.players.length);
   let hands = dealCards(deck, currentGame.players);
 
+  if (currentGame.previousRanking.length > 0) {
+    let ranking = currentGame.previousRanking;
+    let slaveId = ranking[ranking.length-1];
+    let slaveIndex = currentGame.players.findIndex(p => p.id == slaveId);
+    let masterId = ranking[0];
+    let masterIndex = currentGame.players.findIndex(p => p.id == masterId);
+    // The slave gives his two best cards to the master
+    hands[masterIndex].push(hands[slaveIndex].pop());
+    hands[masterIndex].push(hands[slaveIndex].pop());
+  }
+
   currentGame.players.forEach((player, i) => {
     db.collection(root).doc(currentGame.id).collection("players").doc(player.id).update({
       cards: hands[i]
@@ -427,8 +497,26 @@ function startGame() {
 
 function getActivePlayers(game) {
   if (!game.players) return [];
-  let winners = new Set(game.winners || []);
-  return game.players.filter(p => !winners.has(p.id));
+  let currentRanking = new Set(game.currentRanking || []);
+  return game.players.filter(p => !currentRanking.has(p.id));
+}
+
+function showRanking(players) {
+  return new Promise(resolve => {
+    if (!players || players.length == 0) {
+      resolve();
+    } else {
+      $("#ranking-list").html("");
+      players.forEach(p => {
+        $("#ranking-list").append($("<li>").text(p.name));
+      });
+      $("#ranking-modal").on("hide.bs.modal", function () {
+        $("#ranking-modal").off("hide.bs.modal");
+        resolve();
+      });
+      $("#ranking-modal").modal("show");
+    }
+  });
 }
 
 function joinGame(gameId, isPlaying) {
@@ -473,8 +561,16 @@ function joinGame(gameId, isPlaying) {
       state: "playing",
       passes: 0,
       lastMove: "",
+      number: 0,
+      previousRanking: [],
     }).then(startGame);
   });
+
+  $("#select-all-button").on("click", function () {
+    let player = currentGame.players.find(p => p.id == playerId);
+    player.cards.forEach((c, i) => selectedCards.add(i));
+    updateUI();
+  })
 
   $("#throw-cards-button").on("click", function () {
     $("#throw-cards-button").hide();
@@ -495,18 +591,29 @@ function joinGame(gameId, isPlaying) {
       let activePlayers = getActivePlayers(currentGame);
       if (activePlayers.length == 2) {
         // NO players left - end of game!
-        let winners = (currentGame.winners || []).concat(playerId);
+        let currentRanking = (currentGame.currentRanking || []).concat(playerId);
         let loser = activePlayers.find(p => p.id != playerId);
-        winners.push(loser);
+        currentRanking.push(loser.id);
         gameRef.update({
           discarded: discarded_cards,
           ncards: ncards,
           passes: 0,
           lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
-          winners: winners,
+          currentRanking: currentRanking,
           lastThrowPlayer: playerId
         }).then(() => {
-          debugger;
+          setTimeout(() => {
+            gameRef.update({
+              discarded: [],
+              previousRanking: currentRanking,
+              currentRanking: [],
+              state: "exchanging",
+              turn: currentGame.players.findIndex(p => p.id == currentRanking[currentRanking.length-1]),
+              passes: 0,
+              lastMove: "",
+              number: (currentGame.number || 0) + 1,
+            }).then(startGame);
+          }, 500);
         });
       } else {
         // Game should continue without current player
@@ -515,7 +622,7 @@ function joinGame(gameId, isPlaying) {
           ncards: ncards,
           passes: 0,
           lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
-          winners: (currentGame.winners || []).concat(playerId)
+          currentRanking: (currentGame.currentRanking || []).concat(playerId)
         }).then(() => {
           // TODO(Richo): Fireworks!
         });
@@ -765,7 +872,7 @@ function initializeLobby() {
       state: "pending",
       playerNames: [],
       discarded: [],
-      winners: [],
+      currentRanking: [],
       creator: playerId
     }).then(doc => joinGame(doc.id, false));
   });

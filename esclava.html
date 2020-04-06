@@ -75,6 +75,12 @@
                 <button type="button" id="pass-turn-button" class="btn btn-danger btn-lg" style="display: none;">Pasar turno</button>
               </div>
             </div>
+
+            <div class="row mt-3">
+              <div class="col text-right">
+                <button type="button" id="select-all-button" class="btn btn-primary btn-lg" style="display: none;">Seleccionar todas</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -92,6 +98,30 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="ranking-modal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title">Ranking:</h2>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <ol id="ranking-list" style="font-size: xx-large;">
+              <li>Richo</li>
+              <li>Melani</li>
+              <li>Sofi</li>
+              <li>Diego</li>
+            </ol>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success" data-dismiss="modal">Continuar</button>
           </div>
         </div>
       </div>
