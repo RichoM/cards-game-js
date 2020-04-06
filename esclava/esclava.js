@@ -10,7 +10,7 @@ let lastMove = "";
 let canvas = null;
 let ctx = null;
 
-let root = "games_dev";
+let root = "games_2";
 
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
@@ -410,7 +410,7 @@ function updateUI() {
     }
   } else if (currentGame.state == "pending") {
     $("#start-game-button").attr("disabled", true);
-    
+
     if (currentGame.creator == playerId) {
       $("#start-game-button").show();
       if (currentGame.players.length > 1) {
