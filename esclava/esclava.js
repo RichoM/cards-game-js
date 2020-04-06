@@ -21,9 +21,8 @@ function displayState(state) {
 function $star(n) {
   n = n || 1;
   let $span = $("<span>").css("color", "gold");
-  for (let i = 0; i < n; i++) {
-    $span.append($("<i>").addClass("fas").addClass("fa-star"));
-  }
+  $span.append($("<i>").addClass("fas").addClass("fa-star"));
+  $span.append($("<span>").addClass("ml-1").text(n));
   return $span;
 }
 
@@ -53,7 +52,11 @@ function getCurrentPlayer() {
 
 function click(pos) {
   let player = getCurrentPlayer();
-  if (!player || player.id != playerId) return;
+  if (currentGame.state == "exchanging") {
+    player = currentGame.players.find(p => p.id == playerId);
+  } else if (currentGame.state == "playing") {
+    if (!player || player.id != playerId) return;
+  }
 
   let d = dist(pos, origin);
   if (d < click_radius) {
@@ -318,8 +321,10 @@ function updateUI() {
         .css("text-align", "right")
         .append($name));
 
+    let currentRanking = currentGame.currentRanking || [];
+
     let playerHand = getHand(player);
-    if (playerHand.length > 0) {
+    if (playerHand.length > 0 && currentRanking.length != currentGame.players.length) {
       let msg = playerHand.length == 1 ?
                   "1 carta" : playerHand.length + " cartas";
       $row.append($("<div>")
@@ -327,11 +332,10 @@ function updateUI() {
         .text(msg));
     }
 
-    let currentRanking = currentGame.currentRanking || [];
-    if (currentRanking.length > 0 && currentRanking[0] == player.id) {
+    if (currentRanking.findIndex(id => id == player.id) > -1) {
       $row.append($("<div>")
         .addClass("col-sm-auto")
-        .append($star(0)));
+        .append($star(currentRanking.findIndex(id => id == player.id) + 1)));
     } else if (player.id == currentGame.lastThrowPlayer) {
       $row.append($("<div>")
         .addClass("col-sm-auto")
@@ -348,6 +352,8 @@ function updateUI() {
 
   if (currentGame.state == "playing") {
     $("#start-game-button").hide();
+    $("#exchange-cards-button").hide();
+
     try {
       if (currentGame.lastMove != "") {
         $("#msg-board").append($("<h3>").text(currentGame.lastMove));
@@ -412,10 +418,16 @@ function updateUI() {
       $("#start-game-button").hide();
     }
   } else if (currentGame.state == "exchanging") {
+
+    $("#throw-cards-button").hide();
+    $("#pass-turn-button").hide();
+
     if (currentGame.previousRanking[0] == playerId) {
       $("#msg-board").append($("<h3>").text("Elegí 2 cartas para dar al esclavo"));
+      $("#exchange-cards-button").show();
     } else {
       $("#msg-board").append($("<h3>").text("Intercambiando cartas..."));
+      $("#exchange-cards-button").hide();
     }
   }
 }
@@ -454,6 +466,14 @@ function createDeck(nplayers) {
   return deck;
 }
 
+function sortHandByCardValue(hand) {
+  hand.sort((a, b) => {
+    if (a.number == 1) return 1;
+    if (b.number == 1) return -1;
+    return a.number - b.number;
+  });
+}
+
 function dealCards(deck, players) {
   let hands = players.map(each => []);
   let i = 0;
@@ -464,11 +484,7 @@ function dealCards(deck, players) {
 
   // Sort each hand by card's value
   for (let i = 0; i < hands.length; i++) {
-    hands[i].sort((a, b) => {
-      if (a.number == 1) return 1;
-      if (b.number == 1) return -1;
-      return a.number - b.number;
-    });
+    sortHandByCardValue(hands[i]);
   }
   return hands;
 }
@@ -572,6 +588,39 @@ function joinGame(gameId, isPlaying) {
     updateUI();
   })
 
+  $("#exchange-cards-button").on("click", function () {
+    let player = currentGame.players.find(p => p.id == playerId);
+    let card_indices = Array.from(selectedCards).sort((a, b) => b - a); // DESC
+    let sent_cards = card_indices.map(i => player.cards[i]);
+    let ncards = selectedCards.size;
+
+    let new_hand = Array.from(player.cards);
+    card_indices.forEach(index => new_hand.splice(index, 1));
+
+    selectedCards.clear();
+
+    let playersCollection = db.collection(root).doc(currentGame.id).collection("players");
+    playersCollection.doc(playerId).update({
+      cards: new_hand
+    });
+
+    let ranking = currentGame.previousRanking;
+    let slave = currentGame.players.find(p => p.id == ranking[ranking.length-1]);
+    let slaveHand = slave.cards;
+    sent_cards.forEach(c => slaveHand.push(c));
+    sortHandByCardValue(slaveHand);
+
+    playersCollection.doc(slave.id).update({
+      cards: slaveHand
+    }).then(() => {
+      gameRef.update({
+        turn: currentGame.players.findIndex(p => p.id == slave.id),
+        state: "playing",
+        ncards: null
+      })
+    });
+  });
+
   $("#throw-cards-button").on("click", function () {
     $("#throw-cards-button").hide();
     $("#pass-turn-button").hide();
@@ -608,12 +657,14 @@ function joinGame(gameId, isPlaying) {
               previousRanking: currentRanking,
               currentRanking: [],
               state: "exchanging",
-              turn: currentGame.players.findIndex(p => p.id == currentRanking[currentRanking.length-1]),
+              turn: -1,
               passes: 0,
               lastMove: "",
+              lastThrowPlayer: null,
               number: (currentGame.number || 0) + 1,
+              ncards: null,
             }).then(startGame);
-          }, 500);
+          }, 250);
         });
       } else {
         // Game should continue without current player
@@ -622,9 +673,20 @@ function joinGame(gameId, isPlaying) {
           ncards: ncards,
           passes: 0,
           lastMove: userName + " tiró " + ncards + (ncards == 1 ? " carta" : " cartas"),
-          currentRanking: (currentGame.currentRanking || []).concat(playerId)
+          currentRanking: (currentGame.currentRanking || []).concat(playerId),
+          turn: -1
         }).then(() => {
-          // TODO(Richo): Fireworks!
+          setTimeout(() => {
+            let turn = currentGame.players.findIndex(p => p.id == playerId);
+            do {
+              turn = (turn + 1) % currentGame.players.length;
+            } while (currentGame.currentRanking.findIndex(id => id == currentGame.players[turn].id) >= 0);
+            let nextPlayer = currentGame.players[turn];
+            turn = getActivePlayers(currentGame).findIndex(p => p.id == nextPlayer.id);
+            gameRef.update({
+              turn: turn
+            });
+          }, 100);
         });
       }
     } else if (discarded_cards[discarded_cards.length-1].number == 1) {
