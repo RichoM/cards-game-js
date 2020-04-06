@@ -409,8 +409,13 @@ function updateUI() {
       debugger;
     }
   } else if (currentGame.state == "pending") {
+    $("#start-game-button").attr("disabled", true);
+    
     if (currentGame.creator == playerId) {
       $("#start-game-button").show();
+      if (currentGame.players.length > 1) {
+        $("#start-game-button").attr("disabled", null);
+      }
     } else {
       $("#start-game-button").hide();
     }
