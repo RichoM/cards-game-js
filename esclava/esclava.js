@@ -276,9 +276,6 @@ function countUnique(iterable) {
 }
 
 function isValidMove(selection) {
-  // HACK(Richo): To help test
-  return true;
-
   if (countUnique(selection.map(c => c.number)) != 1) return false;
   if (currentGame.discarded.length == 0) return true;
   if (selection.length != currentGame.ncards) return false;
@@ -379,7 +376,7 @@ function updateUI() {
         if (isValidMove(Array.from(selectedCards).map(i => currentPlayer.cards[i]))) {
           $("#throw-cards-button").attr("disabled", null);
           $("#throw-cards-button").show();
-          $("#select-all-button").show();
+          //$("#select-all-button").show();
           $("#pass-turn-button").hide();
 
         } else {
@@ -425,6 +422,11 @@ function updateUI() {
     if (currentGame.previousRanking[0] == playerId) {
       $("#msg-board").append($("<h3>").text("Elegí 2 cartas para dar al esclavo"));
       $("#exchange-cards-button").show();
+      if (selectedCards.size == 2) {
+        $("#exchange-cards-button").attr("disabled", null);
+      } else {
+        $("#exchange-cards-button").attr("disabled", true);
+      }
     } else {
       $("#msg-board").append($("<h3>").text("Intercambiando cartas..."));
       $("#exchange-cards-button").hide();
@@ -731,18 +733,28 @@ function joinGame(gameId, isPlaying) {
 
     selectedCards.clear();
     if (currentGame.passes + 1 == getActivePlayers(currentGame).length) {
+      // All players have passed
       gameRef.update({
         turn: -1,
         passes: currentGame.passes + 1,
         lastMove: userName + " pasó"
       }).then(() => {
+    
+        let turn = currentGame.players.findIndex(p => p.id == currentGame.lastThrowPlayer);
+        while (currentGame.currentRanking.findIndex(id => id == currentGame.players[turn].id) >= 0) {
+          turn = (turn + 1) % currentGame.players.length;
+        }
+        let nextPlayer = currentGame.players[turn];
+        turn = getActivePlayers(currentGame).findIndex(p => p.id == nextPlayer.id);
+
         gameRef.update({
-          turn: getActivePlayers(currentGame).findIndex(p => p.id == playerId),
+          turn: turn,
           discarded: [],
           ncards: null,
         });
       });
     } else {
+      // NORMAL pass
       gameRef.update({
         turn: (currentGame.turn + 1) % getActivePlayers(currentGame).length,
         passes: currentGame.passes + 1,
