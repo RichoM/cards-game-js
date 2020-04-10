@@ -9,6 +9,7 @@ let discardedTransforms = [];
 let lastMove = "";
 let canvas = null;
 let ctx = null;
+let lastPlayer = null;
 
 let root = "games_3";
 
@@ -357,6 +358,13 @@ function updateUI() {
       }
 
       let currentPlayer = getCurrentPlayer();
+      if (currentPlayer) {
+        if (currentPlayer.id == playerId &&
+            lastPlayer != currentPlayer.id) {
+          playSound();
+        }
+        lastPlayer = currentPlayer.id;
+      }
       if (currentPlayer && currentPlayer.id == playerId) {
 
         function getTurnMsg(ncards) {
@@ -1007,6 +1015,10 @@ function initializePlayerId() {
   if (playerId == "47613316-c920-45e6-b7a0-609fa67ba553") {
     startFireworks();
   }
+}
+
+function playSound() {
+  new Audio('sounds/success.wav').play();
 }
 
 $(document).ready(function () {
