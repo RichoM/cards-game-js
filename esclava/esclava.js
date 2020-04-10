@@ -1002,6 +1002,11 @@ function initializePlayerId() {
     playerId = uuid();
     localStorage.setItem("player-id", playerId);
   }
+
+  // MICA 47613316-c920-45e6-b7a0-609fa67ba553
+  if (playerId == "47613316-c920-45e6-b7a0-609fa67ba553") {
+    startFireworks();
+  }
 }
 
 $(document).ready(function () {
