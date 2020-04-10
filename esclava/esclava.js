@@ -10,7 +10,7 @@ let lastMove = "";
 let canvas = null;
 let ctx = null;
 
-let root = "games_2";
+let root = "games_3";
 
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
