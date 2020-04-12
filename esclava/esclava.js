@@ -1013,7 +1013,7 @@ function initializePlayerId() {
 
   // MICA 47613316-c920-45e6-b7a0-609fa67ba553
   if (playerId == "47613316-c920-45e6-b7a0-609fa67ba553") {
-    startFireworks();
+    //startFireworks();
   }
 }
 
