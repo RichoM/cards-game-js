@@ -149,6 +149,7 @@ function drawDiscarded(cards) {
 }
 
 function drawHand(hand) {
+  if (hand.length == 0) return;
   spritesheet.then(sprites => {
     let imgs = hand.map(cardIndex).map(i => sprites[i]);
 
@@ -213,13 +214,24 @@ function drawReceivedCards(cards) {
     ctx.translate(0, -imgs[0].height/2 * scale - 35);
     ctx.font = "24px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Recibiste las siguientes cartas:", 0, 0);
 
+    let player = currentGame.players.find(p => p.id == playerId);
+    let ranking = currentGame.previousRanking;
+    let playerIndex = ranking.indexOf(player.id);
+    let slaveId = ranking[ranking.length - (playerIndex + 1)];
+    let slave = currentGame.players.find(p => p.id == slaveId);
+    if (slave == undefined) {
+      ctx.fillText("Recibiste las siguientes cartas:", 0, 0);
+    } else {
+      ctx.fillText("Recibiste las siguientes cartas de " + slave.name + ":", 0, 0);
+    }
     ctx.resetTransform();
     ctx.translate(canvas.width/2, canvas.height/2 - imgs[0].height * 0.25);
     ctx.scale(scale, scale);
 
-    ctx.translate(-imgs[0].width/2 - 10, 0);
+    if (imgs.length > 1) {
+      ctx.translate(-imgs[0].width/2 - 10, 0);
+    }
 
     imgs.forEach((card, i) => {
       drawCard(card);
@@ -245,10 +257,13 @@ function draw(delta) {
     let playerHand = getHand(getActivePlayers(currentGame).find(p => p.id == playerId));
     if (currentGame.previousRanking[0] == playerId) {
       drawReceivedCards(playerHand.slice(-2));
-    }
-    if (playerHand.length > 0) {
-      // Don't draw the received cards in the hand
       drawHand(playerHand.slice(0, -2));
+    } else if (currentGame.previousRanking.length >= 4 &&
+        currentGame.previousRanking[1] == playerId) {
+      drawReceivedCards(playerHand.slice(-1));
+      drawHand(playerHand.slice(0, -1));
+    } else {
+      drawHand(playerHand);
     }
   }
 
@@ -434,8 +449,18 @@ function updateUI() {
 
     if (currentGame.previousRanking[0] == playerId) {
       $("#msg-board").append($("<h3>").text("Elegí 2 cartas para dar al esclavo"));
+      $("#exchange-cards-button").text("Dar 2 cartas");
       $("#exchange-cards-button").show();
       if (selectedCards.size == 2) {
+        $("#exchange-cards-button").attr("disabled", null);
+      } else {
+        $("#exchange-cards-button").attr("disabled", true);
+      }
+    } else if (currentGame.previousRanking.length >= 4 && currentGame.previousRanking[1] == playerId) {
+      $("#msg-board").append($("<h3>").text("Elegí 1 cartas para dar al esclavo"));
+      $("#exchange-cards-button").text("Dar 1 carta");
+      $("#exchange-cards-button").show();
+      if (selectedCards.size == 1) {
         $("#exchange-cards-button").attr("disabled", null);
       } else {
         $("#exchange-cards-button").attr("disabled", true);
@@ -469,9 +494,10 @@ function shuffle(array) {
 function createDeck(nplayers) {
   let deck = [];
   let suits = ["oro", "copa", "espada", "basto"];
-  let ndecks = nplayers == 1 ? 1 : 2;
+  // ACAACA
+  let ndecks = nplayers == 1 ? 1 : 1;
   suits.forEach((suit, i) => {
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= 4; i++) {
       for (let j = 0; j < ndecks; j++) {
         deck.push({ number: i, suit: suit });
       }
@@ -496,16 +522,10 @@ function dealCards(deck, players) {
     hands[i].push(deck.pop());
     i = (i + 1) % players.length;
   }
-
-  // Sort each hand by card's value
-  for (let i = 0; i < hands.length; i++) {
-    sortHandByCardValue(hands[i]);
-  }
   return hands;
 }
 
-function exchangeCards1() {
-
+function exchangeCards1(hands) {
     let ranking = currentGame.previousRanking;
     let slaveId = ranking[ranking.length-1];
     let slaveIndex = currentGame.players.findIndex(p => p.id == slaveId);
@@ -516,14 +536,13 @@ function exchangeCards1() {
     hands[masterIndex].push(hands[slaveIndex].pop());
 }
 
-function exchangeCards2() {
-
+function exchangeCards2(hands) {
     let ranking = currentGame.previousRanking;
     let slaveId = ranking[ranking.length-2];
     let slaveIndex = currentGame.players.findIndex(p => p.id == slaveId);
     let masterId = ranking[1];
     let masterIndex = currentGame.players.findIndex(p => p.id == masterId);
-    // The slave gives his two best cards to the master
+    // The slave gives his best card to the master
     hands[masterIndex].push(hands[slaveIndex].pop());
 }
 
@@ -531,11 +550,21 @@ function startGame() {
   let deck = createDeck(currentGame.players.length);
   let hands = dealCards(deck, currentGame.players);
 
+  // Sort each hand by card's value
+  for (let i = 0; i < hands.length; i++) {
+    sortHandByCardValue(hands[i]);
+  }
+
   if (currentGame.previousRanking.length > 0) {
-    exchangeCards1();
-    if (currentGame.previousRanking.length >= 4) {      
-      exchangeCards2();
+    exchangeCards1(hands);
+    if (currentGame.previousRanking.length >= 4) {
+      exchangeCards2(hands);
     }
+  }
+
+  // Sort each hand by card's value (again because of exchange)
+  for (let i = 0; i < hands.length; i++) {
+    sortHandByCardValue(hands[i]);
   }
 
   currentGame.players.forEach((player, i) => {
@@ -634,24 +663,43 @@ function joinGame(gameId, isPlaying) {
     selectedCards.clear();
 
     let playersCollection = db.collection(root).doc(currentGame.id).collection("players");
-    playersCollection.doc(playerId).update({
-      cards: new_hand
-    });
 
     let ranking = currentGame.previousRanking;
-    let slave = currentGame.players.find(p => p.id == ranking[ranking.length-1]);
+    let playerIndex = ranking.indexOf(playerId);
+    let slave = null;
+    if (playerIndex == 0) {
+      slave = currentGame.players.find(p => p.id == ranking[ranking.length-1]);
+    } else if (playerIndex == 1) {
+      slave = currentGame.players.find(p => p.id == ranking[ranking.length-2]);
+    } else {
+      // ACAACA ERROR!
+    }
     let slaveHand = slave.cards;
     sent_cards.forEach(c => slaveHand.push(c));
     sortHandByCardValue(slaveHand);
 
-    playersCollection.doc(slave.id).update({
-      cards: slaveHand
+
+    playersCollection.doc(playerId).update({ // Update master's hand
+      cards: new_hand
     }).then(() => {
-      gameRef.update({
-        turn: currentGame.players.findIndex(p => p.id == slave.id),
-        state: "playing",
-        ncards: null
-      })
+      playersCollection.doc(slave.id).update({ // Update slave's hand
+        cards: slaveHand
+      }).then(() => { // Update game state only if all players have same number of cards
+        let worstLoserId = ranking[ranking.length-1];
+        let turn = currentGame.players.findIndex(p => p.id == worstLoserId);
+        let interval = setInterval(function () {
+          if (currentGame.state == "playing") {
+            clearInterval(interval);
+          } else if (new Set(currentGame.players.map(p => p.cards.length)).size == 1) {
+            clearInterval(interval);
+            gameRef.update({
+              turn: turn,
+              state: "playing",
+              ncards: null
+            });
+          }
+        }, 100);
+      });
     });
   });
 
@@ -738,7 +786,7 @@ function joinGame(gameId, isPlaying) {
             turn: getActivePlayers(currentGame).findIndex(p => p.id == playerId),
             discarded: [],
             ncards: null,
-            lastThrowPlayer: null
+            //lastThrowPlayer: null
           })
         }, 500);
       });
