@@ -689,27 +689,35 @@ function joinGame(gameId, isPlaying) {
     sent_cards.forEach(c => slaveHand.push(c));
     sortHandByCardValue(slaveHand);
 
-
-    playersCollection.doc(playerId).update({ // Update master's hand
-      cards: new_hand
+    gameRef.update({ // Register our exchange
+      exchanges: firebase.firestore.FieldValue.arrayUnion(playerId),
     }).then(() => {
-      playersCollection.doc(slave.id).update({ // Update slave's hand
-        cards: slaveHand
-      }).then(() => { // Update game state only if all players have same number of cards
-        let worstLoserId = ranking[ranking.length-1];
-        let turn = currentGame.players.findIndex(p => p.id == worstLoserId);
-        let interval = setInterval(function () {
-          if (currentGame.state == "playing") {
-            clearInterval(interval);
-          } else if (new Set(currentGame.players.map(p => p.cards.length)).size == 1) {
-            clearInterval(interval);
-            gameRef.update({
-              turn: turn,
-              state: "playing",
-              ncards: null
-            });
-          }
-        }, 100);
+      playersCollection.doc(playerId).update({ // Update master's hand
+        cards: new_hand
+      }).then(() => {
+        playersCollection.doc(slave.id).update({ // Update slave's hand
+          cards: slaveHand
+        }).then(() => { // Update game state only if all players have same number of cards
+          let worstLoserId = ranking[ranking.length-1];
+          let turn = currentGame.players.findIndex(p => p.id == worstLoserId);
+          let masters = ranking.slice(0, ranking.length >= 4 ? 2 : 1);
+          let interval = setInterval(function () {
+            if (currentGame.state == "playing") {
+              clearInterval(interval);
+            } else {
+              let exchanges = new Set(currentGame.exchanges);
+              if (masters.every(id => exchanges.has(id))) {
+                clearInterval(interval);
+                gameRef.update({
+                  turn: turn,
+                  state: "playing",
+                  ncards: null,
+                  exchanges: [],
+                });
+              }
+            }
+          }, 100);
+        });
       });
     });
   });
@@ -750,6 +758,7 @@ function joinGame(gameId, isPlaying) {
               previousRanking: currentRanking,
               currentRanking: [],
               state: "exchanging",
+              exchanges: [],
               turn: -1,
               passes: 0,
               lastMove: "",
