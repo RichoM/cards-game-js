@@ -10,6 +10,7 @@ let lastMove = "";
 let canvas = null;
 let ctx = null;
 let lastPlayer = null;
+let exchange = false;
 
 let root = "games_dev";
 
@@ -223,7 +224,7 @@ function drawReceivedCards(cards) {
     if (slave == undefined) {
       ctx.fillText("Recibiste las siguientes cartas:", 0, 0);
     } else {
-      ctx.fillText("Recibiste las siguientes cartas de " + slave.name + ":", 0, 0);
+      ctx.fillText("Recibiste de " + slave.name + ":", 0, 0);
     }
     ctx.resetTransform();
     ctx.translate(canvas.width/2, canvas.height/2 - imgs[0].height * 0.25);
@@ -366,6 +367,7 @@ function updateUI() {
   if (currentGame.state == "playing") {
     $("#start-game-button").hide();
     $("#exchange-cards-button").hide();
+    exchange = false;
 
     try {
       if (currentGame.lastMove != "") {
@@ -447,7 +449,7 @@ function updateUI() {
     $("#throw-cards-button").hide();
     $("#pass-turn-button").hide();
 
-    if (currentGame.previousRanking[0] == playerId) {
+    if (!exchange && currentGame.previousRanking[0] == playerId) {
       $("#msg-board").append($("<h3>").text("Elegí 2 cartas para dar al esclavo"));
       $("#exchange-cards-button").text("Dar 2 cartas");
       $("#exchange-cards-button").show();
@@ -456,7 +458,7 @@ function updateUI() {
       } else {
         $("#exchange-cards-button").attr("disabled", true);
       }
-    } else if (currentGame.previousRanking.length >= 4 && currentGame.previousRanking[1] == playerId) {
+    } else if (!exchange && currentGame.previousRanking.length >= 4 && currentGame.previousRanking[1] == playerId) {
       $("#msg-board").append($("<h3>").text("Elegí 1 cartas para dar al esclavo"));
       $("#exchange-cards-button").text("Dar 1 carta");
       $("#exchange-cards-button").show();
@@ -652,6 +654,7 @@ function joinGame(gameId, isPlaying) {
   })
 
   $("#exchange-cards-button").on("click", function () {
+    exchange = true;
     let player = currentGame.players.find(p => p.id == playerId);
     let card_indices = Array.from(selectedCards).sort((a, b) => b - a); // DESC
     let sent_cards = card_indices.map(i => player.cards[i]);
