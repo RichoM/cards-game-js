@@ -77,6 +77,14 @@ function click(pos) {
       }
     });
     if (min_i != null) {
+      if (currentGame.state == "exchanging") {
+        let playerIndex = currentGame.previousRanking.indexOf(playerId);
+        if (playerIndex < (currentGame.previousRanking.length >= 4 ? 2 : 1)) {
+          // We are one of the masters
+          let nrecv = playerIndex == 0 ? 2 : 1;
+          if (min_i >= playerHand.length - nrecv) return;
+        }
+      }
       if (selectedCards.has(min_i)) {
         selectedCards.delete(min_i);
       } else {
