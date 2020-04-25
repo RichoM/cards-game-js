@@ -12,7 +12,7 @@ let ctx = null;
 let lastPlayer = null;
 let exchange = false;
 
-let root = "games_dev";
+let root = "games_4";
 
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
