@@ -504,10 +504,9 @@ function shuffle(array) {
 function createDeck(nplayers) {
   let deck = [];
   let suits = ["oro", "copa", "espada", "basto"];
-  // ACAACA
-  let ndecks = nplayers == 1 ? 1 : 1;
+  let ndecks = nplayers == 1 ? 1 : 2;
   suits.forEach((suit, i) => {
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 12; i++) {
       for (let j = 0; j < ndecks; j++) {
         deck.push({ number: i, suit: suit });
       }
