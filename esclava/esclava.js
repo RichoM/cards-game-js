@@ -11,7 +11,7 @@ let canvas = null;
 let ctx = null;
 let lastPlayer = null;
 
-let root = "games_3";
+let root = "games_dev";
 
 function displayState(state) {
   if (state == "pending") return "Esperando jugadores...";
@@ -504,11 +504,8 @@ function dealCards(deck, players) {
   return hands;
 }
 
-function startGame() {
-  let deck = createDeck(currentGame.players.length);
-  let hands = dealCards(deck, currentGame.players);
+function exchangeCards1() {
 
-  if (currentGame.previousRanking.length > 0) {
     let ranking = currentGame.previousRanking;
     let slaveId = ranking[ranking.length-1];
     let slaveIndex = currentGame.players.findIndex(p => p.id == slaveId);
@@ -517,6 +514,28 @@ function startGame() {
     // The slave gives his two best cards to the master
     hands[masterIndex].push(hands[slaveIndex].pop());
     hands[masterIndex].push(hands[slaveIndex].pop());
+}
+
+function exchangeCards2() {
+
+    let ranking = currentGame.previousRanking;
+    let slaveId = ranking[ranking.length-2];
+    let slaveIndex = currentGame.players.findIndex(p => p.id == slaveId);
+    let masterId = ranking[1];
+    let masterIndex = currentGame.players.findIndex(p => p.id == masterId);
+    // The slave gives his two best cards to the master
+    hands[masterIndex].push(hands[slaveIndex].pop());
+}
+
+function startGame() {
+  let deck = createDeck(currentGame.players.length);
+  let hands = dealCards(deck, currentGame.players);
+
+  if (currentGame.previousRanking.length > 0) {
+    exchangeCards1();
+    if (currentGame.previousRanking.length >= 4) {      
+      exchangeCards2();
+    }
   }
 
   currentGame.players.forEach((player, i) => {
